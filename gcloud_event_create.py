@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 import os,logging
-import google.cloud.logging
+from google.cloud.logging import Client
+from google.cloud.logging.handlers import CloudLoggingHandler
 from lorem_text import lorem
-numevents = os.getenv('NUMEVENTS', 1000)
-client = google.cloud.logging.Client()
-client.setup_logging()
+
+numevents = os.getenv('NUMEVENTS', 10)
+logname = os.getenv('LOGNAME', 'loremipsumevents')
+
+client = Client()
+handler = CloudLoggingHandler(client, name=logname)
+logger = logging.getLogger()
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 for i in range(numevents):
     message = lorem.sentence()
-    logging.info(message)
+    logger.info(message)
 client.flush_handlers()
