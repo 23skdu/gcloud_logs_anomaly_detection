@@ -19,13 +19,13 @@ df = pd.DataFrame()
 
 client = logging.Client()
 logger = client.logger(logname)
-
 entries = logger.list_entries()
 df = pd.DataFrame(entries)
 df['timestamp'] = df['timestamp'].astype('int64')
 df['severity'] = df['severity'].map(severity_mapping).fillna(0)
+df['message_length'] = df['payload'].apply(len)
 
-X = df[['timestamp','severity']]
+X = df[['timestamp','severity','message_length']]
 scaler = StandardScaler()
 Z = scaler.fit_transform(X)
 Z_train, Z_test = train_test_split(X, test_size=0.2, random_state=42)
@@ -34,4 +34,11 @@ model.fit(Z_train)
 y_pred = model.predict(Z_test)
 
 anomaly_indices = [i for i, pred in enumerate(y_pred) if pred == -1]
-print("Anomaly Indices:", anomaly_indices)
+#print("Anomaly Indices:", anomaly_indices)
+df['highlight'] = df.index.isin(anomaly_indices)
+
+sns.scatterplot(x=df.index, y=df['message_length'], hue='highlight', data=df, palette={True: 'red', False: 'blue'})
+plt.title('Anomaly Detection in Google Cloud Logs')
+plt.xlabel('Log Entry Index')
+plt.ylabel('Log Message Length')
+plt.savefig('anomaly_detection.png')
