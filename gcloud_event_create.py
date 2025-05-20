@@ -4,8 +4,8 @@ from google.cloud.logging import Client
 from google.cloud.logging.handlers import CloudLoggingHandler
 from lorem_text import lorem
 
-numevents = os.getenv('NUMEVENTS', 10)
-logname = os.getenv('LOGNAME', 'loremipsumevents')
+numevents = os.getenv('NUMEVENTS', 100)
+logname = os.getenv('LOG_NAME', 'loremipsumevents')
 
 client = Client()
 handler = CloudLoggingHandler(client, name=logname)
