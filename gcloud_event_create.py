@@ -4,7 +4,7 @@ from google.cloud.logging import Client
 from google.cloud.logging.handlers import CloudLoggingHandler
 from lorem_text import lorem
 
-numevents = os.getenv('NUMEVENTS', 100)
+numevents = os.getenv('NUMEVENTS', 1000)
 logname = os.getenv('LOG_NAME', 'loremipsumevents')
 
 client = Client()
@@ -15,5 +15,5 @@ logger.setLevel(logging.INFO)
 
 for i in range(numevents):
     message = lorem.sentence()
-    logger.info(message)
+    logger.warning(message)
 client.flush_handlers()
