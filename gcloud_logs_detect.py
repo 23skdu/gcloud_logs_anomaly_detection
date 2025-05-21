@@ -26,14 +26,15 @@ df['severity'] = df['severity'].map(severity_mapping).fillna(0)
 df['message_length'] = df['payload'].apply(len)
 
 X = df[['timestamp','severity','message_length']]
+X_train, X_test = train_test_split(X, test_size=0.2, random_state=42) 
 scaler = StandardScaler()
-Z = scaler.fit_transform(X)
-Z_train, Z_test = train_test_split(Z, test_size=0.2, random_state=42)
+Z_train = scaler.fit_transform(X_train) 
+Z_test = scaler.transform(X_test)  
 model = IsolationForest(n_estimators=100, contamination='auto', random_state=42)
 model.fit(Z_train)
 y_pred = model.predict(Z_test)
-
 anomaly_indices = [i for i, pred in enumerate(y_pred) if pred == -1]
+
 df['anomaly'] = df.index.isin(anomaly_indices)
 
 sns.scatterplot(x=df.index, y=df['message_length'], hue='anomaly', data=df, palette={True: 'red', False: 'blue'})
