@@ -90,7 +90,6 @@ def summarize_logs(logs: List[Dict], llm: ChatGoogleGenerativeAI) -> str:
 
     return summary
 
-@timeit
 async def run_log_summarization(project_id: str, filter_query: str, model_name: str) -> None:
     try:
         logs = get_log_entries(project_id, filter_query, hours_ago=1)
