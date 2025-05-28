@@ -82,11 +82,11 @@ def summarize_logs(logs: List[Dict], llm: ChatGoogleGenerativeAI) -> str:
     for chunk in texts:
         chain = (
             {"logs": RunnablePassthrough()}
-            | prompt  # Pass the logs AND summary_length to the prompt
+            | prompt  
             | llm
             | StrOutputParser()
         )
-        summary += chain.invoke({"logs": chunk}, config={"tags": ["summarization"]}) # provide the variable
+        summary += chain.invoke({"logs": chunk}, config={"tags": ["summarization"]}) 
 
     return summary
 
@@ -106,7 +106,7 @@ async def run_log_summarization(project_id: str, filter_query: str, model_name: 
 async def scheduled_task(project_id: str, filter_query: str, model_name: str, interval_hours: int = 1) -> None:
     while True:
         await run_log_summarization(project_id, filter_query, model_name)
-        await asyncio.sleep(interval_hours * 3600)  # Sleep for one hour
+        await asyncio.sleep(interval_hours * 3600)  
 
 if __name__ == "__main__":
     if not PROJECT_ID:
