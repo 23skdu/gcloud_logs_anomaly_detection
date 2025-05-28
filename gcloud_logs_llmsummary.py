@@ -7,11 +7,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from google.api_core.exceptions import ClientError # for error handling
+from langchain.schema import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 PROJECT_ID = os.environ.get("GCP_PROJECT")
 LOG_FILTER = "severity >= INFO"
 MODEL_NAME = os.environ.get("MODEL_NAME","gemini-2.0-flash-lite")
-SUMMARY_LENGTH = 250 
+SUMMARY_LENGTH = 250
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 # --- Decorator for observability tracing ---
@@ -76,10 +79,17 @@ def summarize_logs(logs: List[Dict], llm: ChatGoogleGenerativeAI) -> str:
     Summary:
     """
     prompt = PromptTemplate.from_template(prompt_template)
+    # Updated for Langchain 0.1+
     summary = ""
     for chunk in texts:
-        llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
-        summary += llm_chain.run(logs=chunk, summary_length=SUMMARY_LENGTH)
+        # Construct the chain using the new syntax
+        chain = (
+            {"logs": RunnablePassthrough()}
+            | prompt  # Pass the logs AND summary_length to the prompt
+            | llm
+            | StrOutputParser()
+        )
+        summary += chain.invoke({"logs": chunk, "summary_length": SUMMARY_LENGTH}, config={"tags": ["summarization"]}) # provide the variable
 
     return summary
 
