@@ -14,7 +14,6 @@ from langchain_core.runnables import RunnablePassthrough
 PROJECT_ID = os.environ.get("GCP_PROJECT")
 LOG_FILTER = "severity >= INFO"
 MODEL_NAME = os.environ.get("MODEL_NAME","gemini-2.0-flash-lite")
-SUMMARY_LENGTH = 250
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 # --- Decorator for observability tracing ---
@@ -73,23 +72,21 @@ def summarize_logs(logs: List[Dict], llm: ChatGoogleGenerativeAI) -> str:
     texts = text_splitter.split_text(log_text)
     prompt_template = """
     You are a senior engineer that understands logs and can summarize the logs.
-    Summarize the following logs in concise bullet points. Limit your summary to {summary_length} characters.
+    Summarize the following logs in concise bullet points.
     The logs:
     {logs}
     Summary:
     """
     prompt = PromptTemplate.from_template(prompt_template)
-    # Updated for Langchain 0.1+
     summary = ""
     for chunk in texts:
-        # Construct the chain using the new syntax
         chain = (
             {"logs": RunnablePassthrough()}
             | prompt  # Pass the logs AND summary_length to the prompt
             | llm
             | StrOutputParser()
         )
-        summary += chain.invoke({"logs": chunk, "summary_length": SUMMARY_LENGTH}, config={"tags": ["summarization"]}) # provide the variable
+        summary += chain.invoke({"logs": chunk}, config={"tags": ["summarization"]}) # provide the variable
 
     return summary
 
