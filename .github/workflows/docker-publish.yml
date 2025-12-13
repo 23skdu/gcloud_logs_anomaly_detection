@@ -1,0 +1,57 @@
+name: Docker Build and Publish
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: {{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: {{ env.REGISTRY }}
+          username: {{ github.actor }}
+          password: {{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: {{ env.REGISTRY }}/{{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=1.0.0
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: {{ steps.meta.outputs.tags }}
+          labels: {{ steps.meta.outputs.labels }}
+
+      - name: Create and push git tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Force update tags if they exist
+          git tag -fa 1.0.0 -m "Release 1.0.0"
+          git tag -fa latest -m "Latest release"
+          
+          git push origin 1.0.0 --force
+          git push origin latest --force
