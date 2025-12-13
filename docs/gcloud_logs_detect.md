@@ -7,7 +7,8 @@ them for anomalies using Machine Learning, and visualizes the results.
 
 - Fetches logs using the Google Cloud Logging API.
 - Preprocesses data: maps severity levels to integers, calculates message length.
-- Uses **Isolation Forest** (scikit-learn) to detect anomalies based on timestamp, severity, and message length.
+- Uses **Isolation Forest** (scikit-learn) to detect anomalies based on
+  timestamp, severity, and message length.
 - Generates a scatter plot (anomaly_detection.png) visualizing anomalies.
 
 ## Configuration
