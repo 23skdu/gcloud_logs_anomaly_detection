@@ -3,7 +3,7 @@ scikit-learn==1.8.0
 google-cloud-logging==3.12.1
 seaborn==0.13.2
 matplotlib==3.10.0
-langchain==0.3.17
+langchain==1.2.15
 langchain-google-genai==1.0.9
 langchain-ollama==0.2.1
 lorem-text==2.1
