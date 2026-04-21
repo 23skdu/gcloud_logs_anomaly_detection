@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.14-slim
 LABEL author=23skdu@users.noreply.github.com
 
 WORKDIR /app
