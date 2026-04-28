@@ -2,7 +2,7 @@ pandas==3.0.2
 scikit-learn==1.8.0
 google-cloud-logging==3.12.1
 seaborn==0.13.2
-matplotlib==3.10.0
+matplotlib==3.10.9
 langchain==1.2.15
 langchain-google-genai==4.2.2
 langchain-ollama==1.1.0
