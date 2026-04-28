@@ -6,7 +6,7 @@ matplotlib==3.10.0
 langchain==1.2.15
 langchain-google-genai==4.2.2
 langchain-ollama==1.1.0
-lorem-text==2.1
+lorem-text==3.0
 google-api-core==2.30.3
 pydantic==2.13.3
 pydantic-settings==2.14.0
