@@ -8,7 +8,7 @@ langchain-google-genai==4.2.3
 langchain-ollama==1.1.0
 lorem-text==3.0
 google-api-core==2.30.3
-pydantic==2.13.3
+pydantic==2.13.4
 pydantic-settings==2.14.0
 pytest==9.0.3
 pytest-asyncio==1.4.0
