@@ -10,7 +10,7 @@ lorem-text==3.0
 google-api-core==2.31.0
 pydantic==2.13.4
 pydantic-settings==2.14.1
-pytest==9.0.3
+pytest==9.1.1
 pytest-asyncio==1.4.0
 ruff==0.15.15
 mypy==2.1.0
