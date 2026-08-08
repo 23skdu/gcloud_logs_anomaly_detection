@@ -13,4 +13,4 @@ pydantic-settings==2.14.1
 pytest==9.1.1
 pytest-asyncio==1.4.0
 ruff==0.16.1
-mypy==2.1.0
+mypy==2.3.0
