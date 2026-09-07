@@ -157,15 +157,40 @@ def summarize_logs(logs: list[dict[str, Any]], llm: Any) -> str:
     return summary
 
 
-def create_llm(model_name: str, temperature: float = 0.0) -> Any:
-    """Create LLM instance using Google ADC (Application Default Credentials)."""
+def create_llm(
+    model_name: str,
+    temperature: float = 0.0,
+    backend: str = "gemini",
+) -> Any:
+    """Create LLM instance for the specified backend.
+
+    Backends:
+        gemini  - Google Gemini via langchain-google-genai (default)
+        quarrel - Longbow-Quarrel local inference (OpenAI-compatible)
+        ollama  - Local Ollama via langchain-ollama
+    """
+    if backend == "quarrel":
+        from gcloud_logs_anomaly_detection.quarrel_llm import create_quarrel_llm
+
+        return create_quarrel_llm()
+
+    if backend == "ollama":
+        try:
+            from langchain_ollama import OllamaLLM
+        except ImportError as exc:
+            raise ImportError("langchain-ollama is required for ollama backend") from exc
+        return OllamaLLM(model=model_name)
+
+    # Default: gemini
     if not LANGCHAIN_AVAILABLE:
         raise ImportError("langchain and langchain-google-genai are required")
-
     return ChatGoogleGenerativeAI(
         model=model_name,
         temperature=temperature,
     )
+
+
+BACKEND = os.environ.get("LLM_BACKEND", "gemini")
 
 
 async def run_log_summarization(
@@ -178,7 +203,7 @@ async def run_log_summarization(
         raise GCPConfigError("GCP_PROJECT environment variable is required")
 
     logs = get_log_entries(project_id, filter_query, hours_ago=HOURS_AGO)
-    llm = create_llm(model_name)
+    llm = create_llm(model_name, backend=BACKEND)
     summary = summarize_logs(logs, llm)
     print("--- Log Summary ---")
     print(summary)
@@ -209,7 +234,7 @@ def main() -> None:
         print("Run 'gcloud auth application-default login' to set up credentials.")
         exit(1)
 
-    print(f"Starting log summarization for project: {PROJECT_ID}")
+    print(f"Starting log summarization for project: {PROJECT_ID} (backend: {BACKEND})")
     asyncio.run(scheduled_task(PROJECT_ID, LOG_FILTER, MODEL_NAME, INTERVAL_HOURS))
 
 

@@ -1,0 +1,47 @@
+services:
+  longbow:
+    image: ghcr.io/23skdu/longbow:latest
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "9090:9090"
+    environment:
+      - LONGBOW_MAX_MEMORY=2GB
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:3001"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  quarrel:
+    image: ghcr.io/23skdu/longbow-quarrel:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - QUARREL_API_KEY=${QUARREL_API_KEY:-}
+    volumes:
+      - ~/.cache/llmfit/models:/root/.cache/llmfit/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  anomaly-detection:
+    build: .
+    depends_on:
+      longbow:
+        condition: service_healthy
+      quarrel:
+        condition: service_healthy
+    environment:
+      - LONGBOW_URI=grpc://longbow:3000
+      - LONGBOW_META_URI=grpc://longbow:3001
+      - QUARREL_BASE_URL=http://quarrel:8080
+      - QUARREL_API_KEY=${QUARREL_API_KEY:-}
+      - GCP_PROJECT=${GCP_PROJECT}
+      - LLM_BACKEND=${LLM_BACKEND:-gemini}
+    volumes:
+      - ~/.config/gcloud:/home/appuser/.config/gcloud
+    profiles:
+      - full

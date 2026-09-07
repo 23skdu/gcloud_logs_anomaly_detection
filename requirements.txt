@@ -12,6 +12,9 @@ google-api-core==2.36.0
 pydantic==2.13.5
 pydantic-settings==2.15.0
 click==8.5.0
+longbow>=0.1.9
+openai>=1.0.0
+sentence-transformers>=3.0.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 ruff==0.16.6

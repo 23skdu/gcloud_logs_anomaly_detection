@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.schema.json",
+  "provider": {
+    "default": {
+      "model": "anthropic/claude-sonnet-4-20250514",
+      "temperature": 0.2
+    }
+  },
+  "lsp": {
+    "python": {
+      "command": "pyright-langserver",
+      "args": ["--stdio"],
+      "extensions": [".py"],
+      "languages": ["python"],
+      "initializationOptions": {
+        "pythonPath": ".venv/bin/python",
+        "venvPath": ".",
+        "venv": ".venv",
+        "typeCheckingMode": "strict",
+        "pythonVersion": "3.11"
+      }
+    }
+  },
+  "mcpServers": {}
+}

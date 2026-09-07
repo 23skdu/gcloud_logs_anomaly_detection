@@ -126,6 +126,20 @@ def main() -> None:
     visualize_anomalies(df)
     print(f"Analysis complete. Found {df['anomaly'].sum()} anomalies out of {len(df)} entries.")
 
+    if os.environ.get("STORE_VECTOR") == "1":
+        try:
+            from gcloud_logs_anomaly_detection.longbow_store import store_log_entries
+
+            anomaly_df = df[df["anomaly"]].copy()
+            if len(anomaly_df) > 0:
+                entries = anomaly_df.to_dict("records")
+                count = store_log_entries(entries)
+                print(f"Stored {count} anomaly vectors in Longbow.")
+            else:
+                print("No anomalies to store.")
+        except Exception as exc:
+            print(f"Warning: Failed to store vectors in Longbow: {exc}")
+
 
 if __name__ == "__main__":
     main()

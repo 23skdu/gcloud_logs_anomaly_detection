@@ -23,6 +23,9 @@ dependencies = [
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "click>=8.1.0",
+    "longbow>=0.1.9",
+    "openai>=1.0.0",
+    "sentence-transformers>=3.0.0",
 ]
 
 [project.optional-dependencies]
