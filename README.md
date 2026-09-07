@@ -1,6 +1,5 @@
 # gcloud-logs-anomaly-detection
 
-
 Machine Learning tool to find anomalies in Google Cloud Logging events
 
 ## Features
@@ -8,6 +7,10 @@ Machine Learning tool to find anomalies in Google Cloud Logging events
 - **Anomaly Detection**: Uses Isolation Forest ML algorithm to detect anomalies in log data
 - **LLM Summarization**: Uses Google's Gemini LLM to summarize log entries
 - **Test Data Generation**: Generate sample log events for testing
+- **Unified CLI**: Single entry point for all commands via `gcloud-anomaly`
+- **Structured Logging**: JSON-formatted logs with performance metrics
+- **Error Handling**: Typed exception hierarchy with retry logic
+- **Docker Support**: Multi-stage build, non-root user, healthcheck
 
 ## Installation
 
@@ -37,6 +40,9 @@ cp .env.example .env
 | `GCP_PROJECT` | GCP Project ID (required) | - |
 | `LOG_NAME` | Log name to monitor | `loremipsumevents` |
 | `MODEL_NAME` | LLM model for summarization | `gemini-2.0-flash-lite` |
+| `LOG_FILTER` | Log filter query for LLM summarizer | `severity >= INFO` |
+| `HOURS_AGO` | Hours of logs to fetch for summarizer | `1` |
+| `INTERVAL_HOURS` | Hours between scheduled summarization runs | `1` |
 | `NUMEVENTS` | Number of test events to generate | `1000` |
 | `MODELNAME` | Ollama model for llmtest | `smollm2:135m` |
 
@@ -52,36 +58,22 @@ Or set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to you
 
 ## Usage
 
-### Anomaly Detection
-
-Detect anomalies in your logs:
+### Unified CLI
 
 ```bash
-python gcloud_logs_detect.py
+gcloud-anomaly detect          # Detect anomalies
+gcloud-anomaly summarize       # Summarize logs with LLM
+gcloud-anomaly generate        # Generate test events
+gcloud-anomaly ask "question"  # Ask local Ollama LLM
 ```
 
-### Log Summarization
-
-Summarize logs using LLM:
+### Direct Script Execution
 
 ```bash
-python gcloud_logs_llmsummary.py
-```
-
-### Generate Test Events
-
-Generate sample log events:
-
-```bash
-python gcloud_event_create.py
-```
-
-### Test Local LLM
-
-Test a local Ollama LLM:
-
-```bash
-python llmtest.py "What is Python?"
+python gcloud_logs_detect.py       # Anomaly detection
+python gcloud_logs_llmsummary.py   # LLM summarization
+python gcloud_event_create.py      # Generate test events
+python llmtest.py "What is Python?"  # Test local LLM
 ```
 
 ## Docker
@@ -91,7 +83,7 @@ Build and run with Docker:
 ```bash
 docker build -t gcloud-logs-anomaly-detection .
 docker run -it --rm \
-  -v ~/.config/gcloud:/root/.config/gcloud \
+  -v ~/.config/gcloud:/home/appuser/.config/gcloud \
   -e GCP_PROJECT=your-project \
   gcloud-logs-anomaly-detection
 ```
@@ -109,6 +101,13 @@ pytest
 ```bash
 ruff check .
 mypy .
+```
+
+### Pre-commit
+
+```bash
+pre-commit install
+pre-commit run --all-files
 ```
 
 ## License
