@@ -23,3 +23,7 @@ class LLMSummarizationError(GCloudAnomalyError):
 
 class AnomalyDetectionError(GCloudAnomalyError):
     """Raised when anomaly detection processing fails."""
+
+
+class LongbowCircuitOpenError(GCloudAnomalyError):
+    """Raised when the Longbow circuit breaker is open."""

@@ -2,8 +2,49 @@
 
 from __future__ import annotations
 
+import importlib.metadata
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# --- Plugin Architecture (Improvement #9) ---
+
+
+def discover_llm_backends() -> dict[str, str]:
+    """Discover registered LLM backends via entry points.
+
+    Backends register via pyproject.toml:
+        [project.entry-points."gcloud_anomaly.llm"]
+        quarrel = "gcloud_logs_anomaly_detection.quarrel_llm:create_quarrel_llm"
+
+    Returns:
+        Dict mapping backend name to entry point string.
+    """
+    backends: dict[str, str] = {}
+    try:
+        eps = importlib.metadata.entry_points()
+        group = eps.select(group="gcloud_anomaly.llm") if hasattr(eps, "select") else []
+        for ep in group:
+            backends[ep.name] = ep.value
+    except Exception:
+        pass
+    return backends
+
+
+def get_builtin_backends() -> dict[str, str]:
+    """Return built-in LLM backend names."""
+    return {
+        "gemini": "gcloud_logs_llmsummary:create_llm",
+        "quarrel": "gcloud_logs_anomaly_detection.quarrel_llm:create_quarrel_llm",
+        "ollama": "gcloud_logs_llmsummary:create_llm",
+    }
+
+
+def list_backends() -> dict[str, str]:
+    """List all available LLM backends (built-in + plugin)."""
+    backends = get_builtin_backends()
+    backends.update(discover_llm_backends())
+    return backends
 
 
 class DetectConfig(BaseSettings):

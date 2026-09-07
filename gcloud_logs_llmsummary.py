@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 import os
 import time
@@ -164,10 +165,11 @@ def create_llm(
 ) -> Any:
     """Create LLM instance for the specified backend.
 
-    Backends:
-        gemini  - Google Gemini via langchain-google-genai (default)
-        quarrel - Longbow-Quarrel local inference (OpenAI-compatible)
-        ollama  - Local Ollama via langchain-ollama
+    Backends are resolved in order:
+        1. Built-in: gemini, quarrel, ollama
+        2. Plugin entry points: gcloud_anomaly.llm group
+
+    Use 'gcloud-anomaly backends' to list all available backends.
     """
     if backend == "quarrel":
         from gcloud_logs_anomaly_detection.quarrel_llm import create_quarrel_llm
@@ -181,12 +183,30 @@ def create_llm(
             raise ImportError("langchain-ollama is required for ollama backend") from exc
         return OllamaLLM(model=model_name)
 
-    # Default: gemini
-    if not LANGCHAIN_AVAILABLE:
-        raise ImportError("langchain and langchain-google-genai are required")
-    return ChatGoogleGenerativeAI(
-        model=model_name,
-        temperature=temperature,
+    if backend == "gemini":
+        if not LANGCHAIN_AVAILABLE:
+            raise ImportError("langchain and langchain-google-genai are required")
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=temperature,
+        )
+
+    # Try plugin entry points
+    from gcloud_logs_anomaly_detection.config import discover_llm_backends, get_builtin_backends
+
+    plugins = discover_llm_backends()
+    if backend in plugins:
+        ep_value = plugins[backend]
+        module_path, attr_name = ep_value.rsplit(":", 1)
+        mod = importlib.import_module(module_path)
+        factory = getattr(mod, attr_name)
+        if callable(factory):
+            return factory(model_name=model_name, temperature=temperature)
+        return factory
+
+    available = list(get_builtin_backends().keys()) + list(plugins.keys())
+    raise ValueError(
+        f"Unknown backend '{backend}'. Available: {', '.join(sorted(set(available)))}"
     )
 
 

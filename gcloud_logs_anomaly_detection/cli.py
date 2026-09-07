@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+import time
+from typing import Any
 
 try:
     import click
@@ -102,6 +105,13 @@ def main() -> int:
     @click.option("--duration", default="1h", help="Time window for temporal search")
     @click.option("--id", "vector_id", default=None, type=int, help="Vector ID for by-id search")
     @click.option("--dataset", envvar="LONGBOW_DATASET", default=None)
+    @click.option(
+        "--format", "output_format",
+        default="table",
+        type=click.Choice(["table", "json", "csv"]),
+        help="Output format",
+    )
+    @click.option("--no-cache", is_flag=True, help="Skip search result cache")
     def search(
         query: str | None,
         mode: str,
@@ -111,6 +121,8 @@ def main() -> int:
         duration: str,
         vector_id: int | None,
         dataset: str | None,
+        output_format: str,
+        no_cache: bool,
     ) -> None:
         """Search log vectors in Longbow."""
         from gcloud_logs_anomaly_detection.config import LongbowConfig
@@ -133,45 +145,82 @@ def main() -> int:
             op, value = rest.split(":", 1)
             parsed_filters.append({"field": key, "op": op, "value": value})
 
+        result: Any = None
+
         if mode == "temporal":
-            df = search_temporal_logs(search_type="sliding_window_time", duration=duration, k=top_k, config=config)
+            result = search_temporal_logs(search_type="sliding_window_time", duration=duration, k=top_k, config=config)
         elif mode == "by-id":
             if vector_id is None:
                 click.echo("Error: --id is required for by-id mode", err=True)
                 sys.exit(1)
-            df = search_logs_by_id(vector_id, k=top_k, config=config)
+            result = search_logs_by_id(vector_id, k=top_k, config=config)
         elif mode == "filtered":
             if not query:
                 click.echo("Error: query is required for filtered mode", err=True)
                 sys.exit(1)
-            df = search_filtered_logs(query, filters=parsed_filters, k=top_k, config=config)
+            result = search_filtered_logs(query, filters=parsed_filters, k=top_k, config=config)
         elif mode == "hybrid":
             if not query:
                 click.echo("Error: query is required for hybrid mode", err=True)
                 sys.exit(1)
-            df = search_hybrid_logs(query, alpha=alpha, k=top_k, config=config)
+            result = search_hybrid_logs(query, alpha=alpha, k=top_k, config=config)
         elif mode == "turboquant":
             if not query:
                 click.echo("Error: query is required for turboquant mode", err=True)
                 sys.exit(1)
-            df = search_turboquant_logs(query, k=top_k, config=config)
+            result = search_turboquant_logs(query, k=top_k, config=config)
         else:
             if not query:
                 click.echo("Error: query is required for dense mode", err=True)
                 sys.exit(1)
-            df = search_similar_logs(query, k=top_k, config=config)
+            result = search_similar_logs(query, k=top_k, config=config)
 
-        click.echo(df.to_string(index=False))
+        if output_format == "json":
+            if hasattr(result, "to_json"):
+                click.echo(result.to_json())
+            else:
+                click.echo(json.dumps(str(result)))
+        elif output_format == "csv":
+            if hasattr(result, "to_csv"):
+                click.echo(result.to_csv())
+            else:
+                click.echo(str(result))
+        else:
+            if hasattr(result, "entries"):
+                for entry in result.entries:
+                    click.echo(
+                        f"[{entry.id}] score={entry.score:.4f} "
+                        f"severity={entry.severity} resource={entry.resource} "
+                        f"message={entry.message[:80]}"
+                    )
+                click.echo(f"\n({result.total} results in {result.query_time_ms:.1f}ms)")
+            else:
+                click.echo(str(result))
 
     @cli.command()
     @click.option("--log-name", envvar="LOG_NAME", default="loremipsumevents")
     @click.option("--filter", "log_filter", envvar="LOG_FILTER", default="severity >= INFO")
     @click.option("--hours-ago", envvar="HOURS_AGO", default=24, type=int)
     @click.option("--dataset", envvar="LONGBOW_DATASET", default=None)
-    def ingest(log_name: str, log_filter: str, hours_ago: int, dataset: str | None) -> None:
+    @click.option("--async", "use_async", is_flag=True, help="Use concurrent batch ingestion")
+    @click.option("--workers", default=4, type=int, help="Worker threads for async mode")
+    @click.option("--incremental", is_flag=True, help="Skip already-ingested entries (watermark)")
+    def ingest(
+        log_name: str,
+        log_filter: str,
+        hours_ago: int,
+        dataset: str | None,
+        use_async: bool,
+        workers: int,
+        incremental: bool,
+    ) -> None:
         """Ingest GCP logs into Longbow vector storage."""
         from gcloud_logs_anomaly_detection.config import LongbowConfig
-        from gcloud_logs_anomaly_detection.longbow_store import store_log_entries
+        from gcloud_logs_anomaly_detection.longbow_store import (
+            store_log_entries,
+            store_log_entries_async,
+            store_log_entries_incremental,
+        )
         from gcloud_logs_llmsummary import get_log_entries
 
         config = LongbowConfig()
@@ -191,8 +240,115 @@ def main() -> int:
             click.echo("No entries to ingest.")
             return
 
-        count = store_log_entries(entries, config=config)
-        click.echo(f"Successfully stored {count} vectors in Longbow dataset '{config.dataset}'.")
+        start = time.monotonic()
+        if incremental:
+            count = store_log_entries_incremental(entries, config=config)
+        elif use_async:
+            count = store_log_entries_async(entries, config=config, max_workers=workers)
+        else:
+            count = store_log_entries(entries, config=config)
+        elapsed = time.monotonic() - start
+
+        click.echo(f"Stored {count} vectors in Longbow dataset '{config.dataset}' ({elapsed:.2f}s).")
+
+    @cli.command()
+    @click.option("--longbow", is_flag=True, help="Check Longbow connectivity")
+    @click.option("--quarrel", is_flag=True, help="Check Quarrel connectivity")
+    @click.option("--gemini", is_flag=True, help="Check Gemini/GCP credentials")
+    @click.option("--all", "check_all", is_flag=True, help="Check all services")
+    def health(longbow: bool, quarrel: bool, gemini: bool, check_all: bool) -> None:
+        """Check connectivity to all configured services."""
+        if not any([longbow, quarrel, gemini, check_all]):
+            check_all = True
+
+        results: dict[str, dict[str, Any]] = {}
+
+        if check_all or longbow:
+            results["longbow"] = _check_longbow()
+        if check_all or quarrel:
+            results["quarrel"] = _check_quarrel()
+        if check_all or gemini:
+            results["gemini"] = _check_gemini()
+
+        all_healthy = True
+        for service, info in results.items():
+            status = "healthy" if info["ok"] else "unhealthy"
+            latency = info.get("latency_ms", 0)
+            detail = info.get("detail", "")
+            symbol = "+" if info["ok"] else "x"
+            line = f"[{symbol}] {service}: {status}"
+            if latency:
+                line += f" ({latency:.0f}ms)"
+            if detail:
+                line += f" - {detail}"
+            click.echo(line)
+            if not info["ok"]:
+                all_healthy = False
+
+        sys.exit(0 if all_healthy else 1)
+
+    @cli.command()
+    def backends() -> None:
+        """List available LLM backends."""
+        from gcloud_logs_anomaly_detection.config import list_backends
+
+        available = list_backends()
+        for name, ep in sorted(available.items()):
+            click.echo(f"  {name:12s}  {ep}")
+        click.echo(f"\n{len(available)} backend(s) available.")
 
     cli()
     return 0
+
+
+def _check_longbow() -> dict[str, Any]:
+    """Check Longbow gRPC connectivity."""
+    start = time.monotonic()
+    try:
+        from gcloud_logs_anomaly_detection.config import LongbowConfig
+        from gcloud_logs_anomaly_detection.longbow_client import get_client
+
+        config = LongbowConfig()
+        get_client(config)
+        elapsed = (time.monotonic() - start) * 1000
+        return {"ok": True, "latency_ms": elapsed, "detail": config.uri}
+    except Exception as exc:
+        elapsed = (time.monotonic() - start) * 1000
+        return {"ok": False, "latency_ms": elapsed, "detail": str(exc)}
+
+
+def _check_quarrel() -> dict[str, Any]:
+    """Check Quarrel HTTP health endpoint."""
+    start = time.monotonic()
+    try:
+        import urllib.error
+        import urllib.request
+
+        from gcloud_logs_anomaly_detection.config import QuarrelConfig
+
+        config = QuarrelConfig()
+        url = f"{config.base_url}/health"
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            elapsed = (time.monotonic() - start) * 1000
+            return {"ok": resp.status == 200, "latency_ms": elapsed, "detail": config.base_url}
+    except Exception as exc:
+        elapsed = (time.monotonic() - start) * 1000
+        return {"ok": False, "latency_ms": elapsed, "detail": str(exc)}
+
+
+def _check_gemini() -> dict[str, Any]:
+    """Check GCP credentials and Gemini model access."""
+    start = time.monotonic()
+    try:
+        project_id = os.environ.get("GCP_PROJECT", "")
+        if not project_id:
+            return {"ok": False, "latency_ms": 0, "detail": "GCP_PROJECT not set"}
+        from google.cloud import logging as gcp_logging
+        client = gcp_logging.Client(project=project_id)
+        client.list_entries(max_results=1)
+        elapsed = (time.monotonic() - start) * 1000
+        return {"ok": True, "latency_ms": elapsed, "detail": project_id}
+    except Exception as exc:
+        elapsed = (time.monotonic() - start) * 1000
+        return {"ok": False, "latency_ms": elapsed, "detail": str(exc)}
