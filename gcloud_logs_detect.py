@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 """Anomaly detection for Google Cloud Logging using Isolation Forest."""
 
-import os
-import datetime
-from typing import Any
+from __future__ import annotations
 
+import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
+from google.cloud import logging
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from google.cloud import logging
+from gcloud_logs_anomaly_detection.exceptions import (
+    AnomalyDetectionError,
+    GCPAPIError,
+)
+from gcloud_logs_anomaly_detection.observability import (
+    log_metric,
+    setup_logging,
+    timeit,
+)
 
 SEVERITY_MAPPING: dict[str, int] = {
     "DEBUG": 1,
@@ -28,12 +37,21 @@ def get_log_name() -> str:
     return os.getenv("LOG_NAME", "loremipsumevents")
 
 
+@timeit
 def load_logs(log_name: str, page_size: int = 10000) -> pd.DataFrame:
-    """Load logs from Google Cloud Logging."""
-    client = logging.Client()
-    logger = client.logger(log_name)
-    entries = logger.list_entries(page_size=page_size)
-    return pd.DataFrame(entries)
+    """Load logs from Google Cloud Logging.
+
+    Raises:
+        GCPAPIError: If the GCP API call fails.
+    """
+    try:
+        client = logging.Client()
+        logger = client.logger(log_name)
+        entries = list(logger.list_entries(page_size=page_size))
+        log_metric("log_entries_loaded", len(entries))
+        return pd.DataFrame(entries)
+    except Exception as exc:
+        raise GCPAPIError(f"Failed to load logs from '{log_name}': {exc}") from exc
 
 
 def preprocess_logs(df: pd.DataFrame) -> pd.DataFrame:
@@ -52,22 +70,34 @@ def detect_anomalies(
     n_estimators: int = 100,
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """Detect anomalies using Isolation Forest."""
-    X = df[["timestamp", "severity", "message_length"]]
-    X_train, X_test = train_test_split(X, test_size=test_size, random_state=random_state)
-    scaler = StandardScaler()
-    Z_train = scaler.fit_transform(X_train)
-    Z_test = scaler.transform(X_test)
-    model = IsolationForest(
-        n_estimators=n_estimators,
-        contamination=contamination,
-        random_state=random_state,
-    )
-    model.fit(Z_train)
-    y_pred = model.predict(Z_test)
-    anomaly_indices = [i for i, pred in enumerate(y_pred) if pred == -1]
-    df["anomaly"] = df.index.isin(anomaly_indices)
-    return df
+    """Detect anomalies using Isolation Forest.
+
+    Raises:
+        AnomalyDetectionError: If detection fails.
+    """
+    try:
+        features = df[["timestamp", "severity", "message_length"]]
+        X_train, X_test = train_test_split(
+            features, test_size=test_size, random_state=random_state
+        )
+        scaler = StandardScaler()
+        Z_train = scaler.fit_transform(X_train)
+        Z_test = scaler.transform(X_test)
+        model = IsolationForest(
+            n_estimators=n_estimators,
+            contamination=contamination,
+            random_state=random_state,
+        )
+        model.fit(Z_train)
+        y_pred = model.predict(Z_test)
+        anomaly_indices = [i for i, pred in enumerate(y_pred) if pred == -1]
+        df["anomaly"] = df.index.isin(anomaly_indices)
+        anomaly_count = int(df["anomaly"].sum())
+        log_metric("anomalies_detected", anomaly_count)
+        log_metric("total_entries", len(df))
+        return df
+    except Exception as exc:
+        raise AnomalyDetectionError(f"Anomaly detection failed: {exc}") from exc
 
 
 def visualize_anomalies(df: pd.DataFrame, output_path: str = "anomaly_detection.png") -> None:
@@ -88,6 +118,7 @@ def visualize_anomalies(df: pd.DataFrame, output_path: str = "anomaly_detection.
 
 def main() -> None:
     """Main entry point for anomaly detection."""
+    setup_logging()
     log_name = get_log_name()
     df = load_logs(log_name)
     df = preprocess_logs(df)

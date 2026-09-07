@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """Generate test log events for Google Cloud Logging."""
 
+from __future__ import annotations
+
 import logging
 import os
-from typing import Optional
 
 from google.cloud.logging import Client
 from google.cloud.logging.handlers import CloudLoggingHandler
 from lorem_text import lorem
+
+from gcloud_logs_anomaly_detection.exceptions import GCPAPIError
+from gcloud_logs_anomaly_detection.observability import (
+    log_metric,
+    setup_logging,
+    timeit,
+)
+
+logger = logging.getLogger("gcloud_anomaly.event_create")
 
 
 def get_num_events() -> int:
@@ -32,31 +42,36 @@ def create_log_handler(client: Client, name: str) -> CloudLoggingHandler:
 
 def setup_logger(handler: CloudLoggingHandler) -> logging.Logger:
     """Set up and return a logger with the given handler."""
-    logger = logging.getLogger()
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    return logger
+    log = logging.getLogger()
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
+    return log
 
 
-def generate_events(logger: logging.Logger, num_events: int) -> None:
+@timeit
+def generate_events(log: logging.Logger, num_events: int) -> None:
     """Generate and log the specified number of events."""
-    for i in range(num_events):
+    for _ in range(num_events):
         message = lorem.sentence()
-        logger.warning(message)
+        log.warning(message)
+    log_metric("events_generated", num_events)
 
 
 def main() -> None:
     """Main entry point for generating test log events."""
+    setup_logging()
     num_events = get_num_events()
     log_name = get_log_name()
 
-    client = create_log_client()
-    handler = create_log_handler(client, log_name)
-    logger = setup_logger(handler)
-
-    generate_events(logger, num_events)
-    client.flush_handlers()
-    print(f"Successfully generated {num_events} log events to '{log_name}'.")
+    try:
+        client = create_log_client()
+        handler = create_log_handler(client, log_name)
+        log = setup_logger(handler)
+        generate_events(log, num_events)
+        client.flush_handlers()
+        print(f"Successfully generated {num_events} log events to '{log_name}'.")
+    except Exception as exc:
+        raise GCPAPIError(f"Failed to generate events: {exc}") from exc
 
 
 if __name__ == "__main__":

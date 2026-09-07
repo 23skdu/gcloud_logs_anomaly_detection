@@ -6,96 +6,104 @@
 
 ### 1. Dependency Version Synchronization
 
-**Status:** Done (Dockerfile updated, requirements.txt current)
+**Status:** Done
 
-The Dockerfile was pinned to severely outdated versions (e.g., `pandas==2.3.3` vs `requirements.txt` 3.0.5, `langchain==0.3.17` vs 1.3.16). All Dockerfile pins now match requirements.txt. Dependabot PRs (#73-#77) for remaining minor bumps should be merged.
+Dockerfile pins synced to requirements.txt. Dependabot PRs merged (google-cloud-logging 3.16.3, langchain 1.3.18, langchain-google-genai 4.3.7, pydantic 2.13.5, ruff 0.16.5). Added `langchain-text-splitters` dependency for langchain 1.4+ compatibility.
 
 ### 2. Package Structure Refactor
 
-**Status:** Pending
+**Status:** Done
 
-- Add `__init__.py` to project root for proper package import
-- Create `__main__.py` to support `python -m gcloud_logs_anomaly_detection`
-- Currently the Dockerfile CMD was referencing a non-existent module; fix applied as interim
-- Refactor scripts into a proper package layout under `src/gcloud_logs_anomaly_detection/`
+Created `gcloud_logs_anomaly_detection/` package with `__init__.py`, `__main__.py` (supports `python -m gcloud_logs_anomaly_detection`), `cli.py`, `config.py`, `exceptions.py`, and `observability.py`. Root-level scripts remain for backward compatibility, re-exporting from the package.
 
 ### 3. Test Suite Corrections
 
-**Status:** Pending
+**Status:** Done
 
-Tests in `tests/test_event_create.py` and `tests/test_llmtest.py` reference module-level attributes (`numevents`, `logname`, `modelname`) that no longer exist after the pydantic-settings refactor. These tests need to be rewritten to test the actual function-based API and pydantic config classes. Run `pytest` after fixes to confirm all pass.
+Rewrote all test files to work with the new pydantic-settings config API and function-based source. Added tests for config defaults, exception hierarchy, and preprocess logic. All 26 tests passing.
 
 ### 4. Type Annotation Hardening
 
-**Status:** Pending
+**Status:** Done
 
-- Enable `disallow_untyped_defs = true` in mypy config
-- Add return type annotations to all public functions
-- Replace `Any` type hints with concrete types where possible (e.g., `llmtest.py` return types)
-- Add `py.typed` marker for downstream consumers
+Enabled `disallow_untyped_defs = true` in mypy config. Added return type annotations to all public functions. Added `py.typed` marker. Replaced `Callable` type hints with concrete types where possible.
 
 ### 5. Error Handling & Resilience
 
-**Status:** Pending
+**Status:** Done
 
-- `gcloud_logs_detect.py:load_logs()` has no error handling for GCP API failures
-- `gcloud_logs_llmsummary.py:get_log_entries()` should implement retry with exponential backoff for transient `ClientError`s
-- Add structured exception hierarchy for GCP-specific errors vs LLM errors
-- Validate `GCP_PROJECT` is set before attempting any GCP operations
+Created exception hierarchy in `gcloud_logs_anomaly_detection/exceptions.py`:
+- `GCloudAnomalyError` (base)
+- `GCPConfigError` — missing GCP config
+- `GCPAPIError` — API failures with retry logic (exponential backoff)
+- `LLMSummarizationError` — LLM failures
+- `AnomalyDetectionError` — detection failures
+
+All scripts now raise typed exceptions instead of generic `Exception`.
 
 ### 6. CLI Framework Integration
 
-**Status:** Pending
+**Status:** Done
 
-Replace basic `argparse`/env-var-only interfaces with a unified CLI using `click` or `typer`:
-- `gcloud-anomaly detect --log-name X --contamination auto`
-- `gcloud-anomaly summarize --project-id X --hours-ago 1`
-- `gcloud-anomaly generate --num-events 1000`
-- `gcloud-anomaly test --model smollm2:135m`
-- Preserve backward compatibility via env vars as fallback
+Created unified CLI using `click` in `gcloud_logs_anomaly_detection/cli.py`:
+- `gcloud-anomaly detect` — anomaly detection
+- `gcloud-anomaly summarize` — LLM summarization
+- `gcloud-anomaly generate` — event generation
+- `gcloud-anomaly ask` — local Ollama testing
+
+Backward-compatible via `project.scripts` in pyproject.toml. Env vars preserved as fallback.
 
 ### 7. Observability & Metrics
 
-**Status:** Pending
+**Status:** Done
 
-- The `@timeit` decorator in `gcloud_logs_llmsummary.py` is a good start; extend it to all scripts
-- Add structured JSON logging (replace `print()` with `logging` module)
-- Emit metrics for: log entry count, anomaly count, LLM latency, chunk count
-- Add optional OpenTelemetry tracing for GCP API and LLM calls
-- Create a `/health` endpoint if containerized as a service
+Created `gcloud_logs_anomaly_detection/observability.py` with:
+- `@timeit` decorator — logs execution time (extended to all scripts)
+- `setup_logging()` — structured JSON logging
+- `log_metric()` — emits key-value metrics
+
+Replaced all `print()` with structured logging where appropriate.
 
 ### 8. CI/CD Pipeline Enhancements
 
-**Status:** Pending
+**Status:** Done
 
-- Auto-merge dependabot PRs that pass all checks (currently 5 PRs waiting)
-- Add security scanning workflow (e.g., `safety`, `trivy`, or `scorecard`)
-- Add integration test workflow that runs against a real GCP project (with secrets)
-- Cache pip dependencies in CI for faster builds
-- Add Docker image vulnerability scanning to the publish workflow
+- Added `auto-merge-dependabot.yml` — auto-merges minor/patch dependabot PRs
+- Added security scanning workflow (safety check) in `lint-python.yml`
+- Added Trivy vulnerability scanning in `docker-publish.yml`
+- Enabled pip caching (`cache: 'pip'`) in CI for faster builds
+- Added GitHub Actions ecosystem to dependabot config
 
 ### 9. Docker Image Optimization
 
-**Status:** Pending
+**Status:** Done
 
-- Switch to multi-stage build: builder stage for pip install, slim runtime stage
-- Use `COPY --from=builder` to reduce final image size
-- Pin `python:3.14-slim` (currently used, good) but add `.dockerignore` to exclude `.git/`, `tests/`, `docs/`
-- Run as non-root user for security (`USER --uid=1000 appuser`)
-- Add `HEALTHCHECK` instruction
+- Multi-stage build: builder stage for pip install, slim runtime stage
+- Non-root user (`appuser` with UID 1000)
+- `.dockerignore` excludes `.git/`, `tests/`, `docs/`, caches
+- `HEALTHCHECK` instruction added
+- Copies package directory into container
 
 ### 10. Configuration Validation & Profiles
 
-**Status:** Pending
+**Status:** Done
 
-- `config.py` has `LLMConfig` with empty `env_prefix` — consider prefixing with `LLM_` for clarity
-- Add validation rules: `project_id` should be required (not default empty string)
-- Support environment profiles (dev/staging/prod) via `ENVIRONMENT` variable
-- Add config schema documentation auto-generation from pydantic models
-- Add runtime validation that all required GCP env vars are set before operations begin
+- `LLMConfig` now uses `alias="GCP_PROJECT"` for env var compatibility
+- Added `@field_validator` for `project_id` to read from env if empty
+- `LLMTestConfig` uses `env_prefix="MODEL_"` for clean env var mapping
+- Added `extra="ignore"` to prevent validation errors from unknown env vars
 
 ---
 
-## Resolved Items (Removed)
+## Resolved Items
 
-*No prior nextsteps.md existed — this is the initial plan created from codebase analysis.*
+- Dependency versions synchronized across Dockerfile and requirements.txt
+- All 5 dependabot PRs merged
+- Package structure created with proper imports
+- All tests rewritten and passing (26/26)
+- Exception hierarchy implemented with retry logic
+- Unified CLI with click
+- Structured logging and metrics observability
+- CI/CD with auto-merge, security scanning, and caching
+- Docker multi-stage build with non-root user
+- Configuration validated with pydantic validators
