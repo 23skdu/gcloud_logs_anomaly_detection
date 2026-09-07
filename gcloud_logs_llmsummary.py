@@ -13,8 +13,6 @@ from google.api_core.exceptions import ClientError
 from google.cloud import logging as gcp_logging
 
 try:
-    from langchain import LLMChain
-    from langchain.chains import LLMChain
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.prompts import PromptTemplate
     from langchain.text_splitter import RecursiveCharacterTextSplitter
