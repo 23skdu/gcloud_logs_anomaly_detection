@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 try:
@@ -32,10 +33,12 @@ def main() -> int:
     @click.option("--store-vector", is_flag=True, help="Store results in Longbow")
     def detect(log_name: str, page_size: int, contamination: str, store_vector: bool) -> None:
         """Detect anomalies in Google Cloud logs."""
-        sys.argv = ["gcloud_logs_detect.py"]
+        os.environ["LOG_NAME"] = log_name
+        os.environ["LOG_PAGE_SIZE"] = str(page_size)
+        os.environ["LOG_CONTAMINATION"] = contamination
         if store_vector:
             os.environ["STORE_VECTOR"] = "1"
-        from gcloud_logs_anomaly_detection.detect import main as detect_main
+        from gcloud_logs_detect import main as detect_main
 
         detect_main()
 
@@ -51,9 +54,11 @@ def main() -> int:
     )
     def summarize(project_id: str, model_name: str, hours_ago: int, backend: str) -> None:
         """Summarize logs using an LLM."""
+        os.environ["GCP_PROJECT"] = project_id
+        os.environ["MODEL_NAME"] = model_name
+        os.environ["HOURS_AGO"] = str(hours_ago)
         os.environ["LLM_BACKEND"] = backend
-        sys.argv = ["gcloud_logs_llmsummary.py"]
-        from gcloud_logs_anomaly_detection.llm_summary import main as summary_main
+        from gcloud_logs_llmsummary import main as summary_main
 
         summary_main()
 
@@ -62,8 +67,9 @@ def main() -> int:
     @click.option("--log-name", envvar="LOG_NAME", default="loremipsumevents")
     def generate(num_events: int, log_name: str) -> None:
         """Generate test log events in GCP."""
-        sys.argv = ["gcloud_event_create.py"]
-        from gcloud_logs_anomaly_detection.event_create import main as gen_main
+        os.environ["NUMEVENTS"] = str(num_events)
+        os.environ["LOG_NAME"] = log_name
+        from gcloud_event_create import main as gen_main
 
         gen_main()
 
@@ -72,8 +78,9 @@ def main() -> int:
     @click.option("--model", envvar="MODELNAME", default="smollm2:135m")
     def ask(question: str, model: str) -> None:
         """Ask a question to a local Ollama LLM."""
+        os.environ["MODELNAME"] = model
         sys.argv = ["llmtest.py", question]
-        from gcloud_logs_anomaly_detection.llm_test import main as test_main
+        from llmtest import main as test_main
 
         test_main()
 
@@ -131,27 +138,27 @@ def main() -> int:
         elif mode == "by-id":
             if vector_id is None:
                 click.echo("Error: --id is required for by-id mode", err=True)
-                return 1
+                sys.exit(1)
             df = search_logs_by_id(vector_id, k=top_k, config=config)
         elif mode == "filtered":
             if not query:
                 click.echo("Error: query is required for filtered mode", err=True)
-                return 1
+                sys.exit(1)
             df = search_filtered_logs(query, filters=parsed_filters, k=top_k, config=config)
         elif mode == "hybrid":
             if not query:
                 click.echo("Error: query is required for hybrid mode", err=True)
-                return 1
+                sys.exit(1)
             df = search_hybrid_logs(query, alpha=alpha, k=top_k, config=config)
         elif mode == "turboquant":
             if not query:
                 click.echo("Error: query is required for turboquant mode", err=True)
-                return 1
+                sys.exit(1)
             df = search_turboquant_logs(query, k=top_k, config=config)
         else:
             if not query:
                 click.echo("Error: query is required for dense mode", err=True)
-                return 1
+                sys.exit(1)
             df = search_similar_logs(query, k=top_k, config=config)
 
         click.echo(df.to_string(index=False))
@@ -164,19 +171,17 @@ def main() -> int:
     def ingest(log_name: str, log_filter: str, hours_ago: int, dataset: str | None) -> None:
         """Ingest GCP logs into Longbow vector storage."""
         from gcloud_logs_anomaly_detection.config import LongbowConfig
-        from gcloud_logs_anomaly_detection.llmsummary import get_log_entries
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries
+        from gcloud_logs_llmsummary import get_log_entries
 
         config = LongbowConfig()
         if dataset:
             config.dataset = dataset
 
-        import os
-
         project_id = os.environ.get("GCP_PROJECT", "")
         if not project_id:
             click.echo("Error: GCP_PROJECT environment variable is required", err=True)
-            return 1
+            sys.exit(1)
 
         click.echo(f"Fetching logs from project '{project_id}'...")
         entries = get_log_entries(project_id, log_filter, hours_ago=hours_ago)
@@ -184,11 +189,10 @@ def main() -> int:
 
         if not entries:
             click.echo("No entries to ingest.")
-            return 0
+            return
 
         count = store_log_entries(entries, config=config)
         click.echo(f"Successfully stored {count} vectors in Longbow dataset '{config.dataset}'.")
 
     cli()
-    import os  # noqa: E402
     return 0
