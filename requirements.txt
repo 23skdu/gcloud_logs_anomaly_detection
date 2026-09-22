@@ -1,14 +1,14 @@
-pandas==3.0.5
+pandas==3.0.6
 scikit-learn==1.9.1
 google-cloud-logging==3.16.3
 seaborn==0.13.2
 matplotlib==3.11.2
-langchain==1.4.0
+langchain==1.4.2
 langchain-google-genai==4.4.0
 langchain-ollama==1.1.0
 langchain-text-splitters==1.1.2
 lorem-text==3.0
-google-api-core==2.36.0
+google-api-core==2.38.0
 pydantic==2.13.5
 pydantic-settings==2.15.0
 click==8.5.0
@@ -17,5 +17,5 @@ openai>=1.0.0
 sentence-transformers>=3.0.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
-ruff==0.16.7
+ruff==0.16.8
 mypy==2.3.1
