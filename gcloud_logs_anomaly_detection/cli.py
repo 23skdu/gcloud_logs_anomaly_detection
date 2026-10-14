@@ -8,21 +8,15 @@ import sys
 import time
 from typing import Any
 
-try:
-    import click
-except ImportError:
-    click = None  # type: ignore[assignment]
+import click
 
 
 def _has_click() -> bool:
-    return click is not None
+    return True
 
 
 def main() -> int:
-    """Main CLI dispatcher. Falls back to individual script entry points."""
-    if not _has_click():
-        print("Install click for unified CLI: pip install click", file=sys.stderr)
-        return 1
+    """Main CLI dispatcher."""
 
     @click.group()
     @click.version_option(package_name="gcloud-logs-anomaly-detection")
@@ -41,7 +35,7 @@ def main() -> int:
         os.environ["LOG_CONTAMINATION"] = contamination
         if store_vector:
             os.environ["STORE_VECTOR"] = "1"
-        from gcloud_logs_detect import main as detect_main
+        from scripts.gcloud_logs_detect import main as detect_main
 
         detect_main()
 
@@ -61,7 +55,7 @@ def main() -> int:
         os.environ["MODEL_NAME"] = model_name
         os.environ["HOURS_AGO"] = str(hours_ago)
         os.environ["LLM_BACKEND"] = backend
-        from gcloud_logs_llmsummary import main as summary_main
+        from scripts.gcloud_logs_llmsummary import main as summary_main
 
         summary_main()
 
@@ -72,7 +66,7 @@ def main() -> int:
         """Generate test log events in GCP."""
         os.environ["NUMEVENTS"] = str(num_events)
         os.environ["LOG_NAME"] = log_name
-        from gcloud_event_create import main as gen_main
+        from scripts.gcloud_event_create import main as gen_main
 
         gen_main()
 
@@ -83,7 +77,7 @@ def main() -> int:
         """Ask a question to a local Ollama LLM."""
         os.environ["MODELNAME"] = model
         sys.argv = ["llmtest.py", question]
-        from llmtest import main as test_main
+        from scripts.llmtest import main as test_main
 
         test_main()
 
@@ -221,7 +215,7 @@ def main() -> int:
             store_log_entries_async,
             store_log_entries_incremental,
         )
-        from gcloud_logs_llmsummary import get_log_entries
+        from scripts.gcloud_logs_llmsummary import get_log_entries
 
         config = LongbowConfig()
         if dataset:

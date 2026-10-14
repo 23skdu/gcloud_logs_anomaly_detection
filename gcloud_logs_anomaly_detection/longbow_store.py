@@ -107,7 +107,7 @@ def _cache_key(query: str, mode: str, **kwargs: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def _get_cached(key: str) -> Any | None:
+def _get_cached(key: str) -> Any:
     if key in _search_cache:
         ts, result = _search_cache[key]
         if time.monotonic() - ts < _CACHE_TTL:
@@ -202,7 +202,7 @@ def store_log_entries_async(
     def _process_chunk(chunk: list[dict[str, Any]]) -> int:
         vectors = embed_log_entries(chunk, model_name=config.embedding_model)
         metadata = _build_metadata(chunk)
-        return store_vectors(vectors, metadata, config)
+        return int(store_vectors(vectors, metadata, config))
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_process_chunk, chunk): chunk for chunk in chunks}
@@ -259,7 +259,7 @@ def store_log_entries(
 
     count = store_vectors(vectors, metadata, config)
     logger.info("Stored %d log entries in Longbow dataset '%s'", count, config.dataset)
-    return count
+    return int(count)
 
 
 def store_log_entries_incremental(

@@ -1,0 +1,86 @@
+services:
+  longbow:
+    image: ghcr.io/23skdu/longbow:latest
+    container_name: longbow-vector-db
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "9090:9090"
+    environment:
+      - LONGBOW_MAX_MEMORY=${LONGBOW_MAX_MEMORY:-2GB}
+    volumes:
+      - longbow-data:/data
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:3001"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  quarrel:
+    image: ghcr.io/23skdu/longbow-quarrel:latest
+    container_name: quarrel-inference
+    ports:
+      - "8080:8080"
+    environment:
+      - QUARREL_API_KEY=${QUARREL_API_KEY:-}
+      - QUARREL_MODEL=${QUARREL_MODEL:-default}
+      - QUARREL_TEMPERATURE=${QUARREL_TEMPERATURE:-0.0}
+      - QUARREL_MAX_TOKENS=${QUARREL_MAX_TOKENS:-4096}
+    volumes:
+      - ~/.cache/llmfit/models:/root/.cache/llmfit/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-local-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - ollama
+      - full
+    restart: unless-stopped
+
+  anomaly-detection:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gcloud-logs-anomaly-detection:latest
+    container_name: gcloud-logs-anomaly-detection
+    depends_on:
+      longbow:
+        condition: service_healthy
+      quarrel:
+        condition: service_healthy
+    environment:
+      - GCP_PROJECT=${GCP_PROJECT:-}
+      - LOG_NAME=${LOG_NAME:-loremipsumevents}
+      - LLM_BACKEND=${LLM_BACKEND:-gemini}
+      - MODEL_NAME=${MODEL_NAME:-gemini-2.0-flash-lite}
+      - LONGBOW_URI=grpc://longbow:3000
+      - LONGBOW_META_URI=grpc://longbow:3001
+      - LONGBOW_DATASET=${LONGBOW_DATASET:-gcloud_logs}
+      - QUARREL_BASE_URL=http://quarrel:8080
+      - QUARREL_API_KEY=${QUARREL_API_KEY:-}
+      - MODELNAME=${MODELNAME:-smollm2:135m}
+    volumes:
+      - ~/.config/gcloud:/home/appuser/.config/gcloud:ro
+    command: ["--help"]
+
+volumes:
+  longbow-data:
+    driver: local
+  ollama-data:
+    driver: local

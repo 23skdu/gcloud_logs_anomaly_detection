@@ -7,12 +7,24 @@ import asyncio
 import importlib
 import logging
 import os
+import sys
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
+
+# Ensure project root is in sys.path when run directly
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from google.api_core.exceptions import ClientError
 from google.cloud import logging as gcp_logging
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from gcloud_logs_anomaly_detection.exceptions import (
     GCPAPIError,
@@ -25,16 +37,7 @@ from gcloud_logs_anomaly_detection.observability import (
     timeit,
 )
 
-try:
-    from langchain_core.output_parsers import StrOutputParser
-    from langchain_core.prompts import PromptTemplate
-    from langchain_core.runnables import RunnablePassthrough
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-    LANGCHAIN_AVAILABLE = True
-except ImportError:
-    LANGCHAIN_AVAILABLE = False
+LANGCHAIN_AVAILABLE = True
 
 logger = logging.getLogger("gcloud_anomaly.llm")
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -14,7 +15,9 @@ class TestDetectStoreSearchFlow:
     @patch("gcloud_logs_anomaly_detection.longbow_store.embed_log_entries")
     @patch("gcloud_logs_anomaly_detection.longbow_store.store_vectors")
     @patch("gcloud_logs_anomaly_detection.longbow_store.ensure_dataset")
-    def test_detect_to_store_flow(self, mock_ensure, mock_store, mock_embed):
+    def test_detect_to_store_flow(
+        self, mock_ensure: MagicMock, mock_store: MagicMock, mock_embed: MagicMock
+    ) -> None:
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries
 
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
@@ -36,7 +39,7 @@ class TestDetectStoreSearchFlow:
 
     @patch("gcloud_logs_anomaly_detection.longbow_store.search_vectors")
     @patch("gcloud_logs_anomaly_detection.longbow_store.embed_text")
-    def test_search_after_store(self, mock_embed, mock_search):
+    def test_search_after_store(self, mock_embed: MagicMock, mock_search: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.longbow_store import search_similar_logs
 
         mock_embed.return_value = [0.1, 0.2, 0.3]
@@ -59,7 +62,7 @@ class TestIngestSearchFlow:
 
     @patch("gcloud_logs_anomaly_detection.longbow_store.search_vectors")
     @patch("gcloud_logs_anomaly_detection.longbow_store.embed_text")
-    def test_ingest_then_search(self, mock_embed, mock_search):
+    def test_ingest_then_search(self, mock_embed: MagicMock, mock_search: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.longbow_store import (
             search_similar_logs,
             store_log_entries,
@@ -93,7 +96,7 @@ class TestSummarizeQuarrelFlow:
     """Test: summarize logs using quarrel backend."""
 
     @patch("gcloud_logs_anomaly_detection.quarrel_llm.OpenAI")
-    def test_quarrel_backend_end_to_end(self, mock_openai_cls):
+    def test_quarrel_backend_end_to_end(self, mock_openai_cls: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.quarrel_llm import create_quarrel_llm
 
         mock_client = MagicMock()
@@ -109,14 +112,14 @@ class TestSummarizeQuarrelFlow:
         assert "Summary" in result
         mock_openai_cls.assert_called_once()
 
-    def test_create_llm_quarrel_backend(self):
-        from gcloud_logs_llmsummary import create_llm
+    def test_create_llm_quarrel_backend(self) -> None:
+        from scripts.gcloud_logs_llmsummary import create_llm
 
         llm = create_llm("default", backend="quarrel")
         assert llm._llm_type == "quarrel"
 
-    def test_create_llm_unknown_backend_raises(self):
-        from gcloud_logs_llmsummary import create_llm
+    def test_create_llm_unknown_backend_raises(self) -> None:
+        from scripts.gcloud_logs_llmsummary import create_llm
 
         try:
             create_llm("model", backend="nonexistent_backend")
@@ -129,7 +132,7 @@ class TestHealthCheckFlow:
     """Test: health check commands."""
 
     @patch("urllib.request.urlopen")
-    def test_check_quarrel_success(self, mock_urlopen):
+    def test_check_quarrel_success(self, mock_urlopen: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.cli import _check_quarrel
 
         mock_resp = MagicMock()
@@ -143,7 +146,7 @@ class TestHealthCheckFlow:
         assert result["latency_ms"] > 0
 
     @patch("urllib.request.urlopen")
-    def test_check_quarrel_failure(self, mock_urlopen):
+    def test_check_quarrel_failure(self, mock_urlopen: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.cli import _check_quarrel
 
         mock_urlopen.side_effect = ConnectionRefusedError("Connection refused")
@@ -151,7 +154,7 @@ class TestHealthCheckFlow:
         assert result["ok"] is False
         assert "Connection refused" in result["detail"]
 
-    def test_check_gemini_no_project(self):
+    def test_check_gemini_no_project(self) -> None:
         from gcloud_logs_anomaly_detection.cli import _check_gemini
 
         with patch.dict("os.environ", {}, clear=True):
@@ -164,7 +167,7 @@ class TestCircuitBreakerIntegration:
     """Test circuit breaker behavior in real operation flow."""
 
     @patch("gcloud_logs_anomaly_detection.longbow_client.get_client")
-    def test_circuit_opens_after_failures(self, mock_get):
+    def test_circuit_opens_after_failures(self, mock_get: MagicMock) -> None:
         from gcloud_logs_anomaly_detection import longbow_client
 
         longbow_client._client = None
@@ -199,7 +202,9 @@ class TestIncrementalIngestionFlow:
     @patch("gcloud_logs_anomaly_detection.longbow_store.get_watermark")
     @patch("gcloud_logs_anomaly_detection.longbow_store.store_log_entries")
     @patch("gcloud_logs_anomaly_detection.longbow_store.set_watermark")
-    def test_skips_already_ingested(self, mock_set_wm, mock_store, mock_get_wm):
+    def test_skips_already_ingested(
+        self, mock_set_wm: MagicMock, mock_store: MagicMock, mock_get_wm: MagicMock
+    ) -> None:
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries_incremental
 
         mock_get_wm.return_value = 2_000_000_000  # 2 seconds in ns
@@ -211,7 +216,7 @@ class TestIncrementalIngestionFlow:
         assert count == 1
 
     @patch("gcloud_logs_anomaly_detection.longbow_store.get_watermark")
-    def test_processes_all_when_no_watermark(self, mock_get_wm):
+    def test_processes_all_when_no_watermark(self, mock_get_wm: MagicMock) -> None:
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries_incremental
 
         mock_get_wm.return_value = None
@@ -230,12 +235,13 @@ class TestIncrementalIngestionFlow:
 class TestSchemaNormalizationIntegration:
     """Test: log entry normalization across log types."""
 
-    def test_full_normalization_pipeline(self):
+    def test_full_normalization_pipeline(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import (
             _entry_to_text,
             normalize_entries,
         )
 
+        empty_labels: dict[str, Any] = {}
         raw_entries = [
             {
                 "severity": "ERROR",
@@ -247,7 +253,7 @@ class TestSchemaNormalizationIntegration:
                 "severity": "WARNING",
                 "message": "High CPU usage",
                 "resource": "compute-engine",
-                "labels": {},
+                "labels": empty_labels,
             },
         ]
 
@@ -261,7 +267,7 @@ class TestSchemaNormalizationIntegration:
         assert all(isinstance(t, str) for t in texts)
         assert len(texts[0]) > 0
 
-    def test_embedding_after_normalization(self):
+    def test_embedding_after_normalization(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text, normalize_entry
 
         raw = {
@@ -281,7 +287,7 @@ class TestMetricsIntegration:
     """Test: metrics collection across operations."""
 
     @patch.dict("os.environ", {"METRICS_ENABLED": "1"})
-    def test_metrics_collected_during_search(self):
+    def test_metrics_collected_during_search(self) -> None:
         import gcloud_logs_anomaly_detection.observability as obs
 
         obs._metrics_enabled = True
@@ -294,7 +300,7 @@ class TestMetricsIntegration:
         obs._metrics.clear()
 
     @patch.dict("os.environ", {"METRICS_ENABLED": "1"})
-    def test_prometheus_output_format(self):
+    def test_prometheus_output_format(self) -> None:
         import gcloud_logs_anomaly_detection.observability as obs
 
         obs._metrics_enabled = True
@@ -312,7 +318,7 @@ class TestMetricsIntegration:
 class TestPluginArchitectureIntegration:
     """Test: plugin backend discovery and creation."""
 
-    def test_builtin_backends_discovered(self):
+    def test_builtin_backends_discovered(self) -> None:
         from gcloud_logs_anomaly_detection.config import get_builtin_backends, list_backends
 
         builtins = get_builtin_backends()
@@ -323,10 +329,10 @@ class TestPluginArchitectureIntegration:
         for name in builtins:
             assert name in all_backends
 
-    def test_create_llm_gemini_backend(self):
-        from gcloud_logs_llmsummary import create_llm
+    def test_create_llm_gemini_backend(self) -> None:
+        from scripts.gcloud_logs_llmsummary import create_llm
 
-        with patch("gcloud_logs_llmsummary.ChatGoogleGenerativeAI") as mock_cls:
+        with patch("scripts.gcloud_logs_llmsummary.ChatGoogleGenerativeAI") as mock_cls:
             mock_cls.return_value = MagicMock()
             create_llm("gemini-2.0-flash-lite", backend="gemini")
             mock_cls.assert_called_once_with(model="gemini-2.0-flash-lite", temperature=0.0)

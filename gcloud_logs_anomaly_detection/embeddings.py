@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from gcloud_logs_anomaly_detection.observability import log_metric, timeit
 
@@ -15,14 +15,17 @@ _model: Any = None
 # --- Log Entry Schema Normalization (Improvement #7) ---
 
 
-class LogEntrySchema(TypedDict, total=False):
-    """Normalized log entry schema across GCP log types."""
-
-    timestamp: Any
+class _LogEntryRequired(TypedDict):
     severity: str
     message: str
     resource: str
     labels: dict[str, Any]
+
+
+class LogEntrySchema(_LogEntryRequired, total=False):
+    """Normalized log entry schema across GCP log types."""
+
+    timestamp: Any
     log_name: str
     insert_id: str
 
@@ -60,7 +63,7 @@ _LOG_TYPE_MAPPERS: dict[str, dict[str, str]] = {
 def _resolve_nested(data: dict[str, Any], path: str) -> Any:
     """Resolve a dotted path in a nested dict."""
     parts = path.split(".")
-    current = data
+    current: Any = data
     for part in parts:
         if isinstance(current, dict):
             current = current.get(part)
@@ -94,7 +97,8 @@ def normalize_entry(
     labels = raw_entry.get("labels", {})
     if isinstance(labels, str):
         try:
-            labels = json.loads(labels) if labels else {}
+            empty_labels: dict[str, Any] = {}
+            labels = json.loads(labels) if labels else empty_labels
         except (json.JSONDecodeError, TypeError):
             labels = {"raw": labels}
 
@@ -131,33 +135,34 @@ def get_model(model_name: str = "all-MiniLM-L6-v2") -> Any:
 def embed_text(text: str, model_name: str = "all-MiniLM-L6-v2") -> list[float]:
     """Embed a single text string."""
     model = get_model(model_name)
-    return model.encode(text).tolist()
+    return cast("list[float]", model.encode(text).tolist())
 
 
 @timeit
 def embed_log_entry(
-    entry: dict[str, Any], model_name: str = "all-MiniLM-L6-v2"
+    entry: dict[str, Any] | LogEntrySchema, model_name: str = "all-MiniLM-L6-v2"
 ) -> list[float]:
     """Embed a single log entry dict into a vector."""
     text = _entry_to_text(entry)
-    return embed_text(text, model_name)
+    return cast("list[float]", embed_text(text, model_name))
 
 
 @timeit
 def embed_log_entries(
-    entries: list[dict[str, Any]], model_name: str = "all-MiniLM-L6-v2"
+    entries: list[dict[str, Any]] | list[LogEntrySchema] | list[Any],
+    model_name: str = "all-MiniLM-L6-v2",
 ) -> list[list[float]]:
     """Embed a batch of log entry dicts into vectors."""
     if not entries:
         return []
     texts = [_entry_to_text(e) for e in entries]
     model = get_model(model_name)
-    vectors = model.encode(texts).tolist()
+    vectors: list[list[float]] = cast("list[list[float]]", model.encode(texts).tolist())
     log_metric("entries_embedded", len(vectors))
     return vectors
 
 
-def _entry_to_text(entry: dict[str, Any]) -> str:
+def _entry_to_text(entry: dict[str, Any] | LogEntrySchema) -> str:
     """Convert a log entry dict to a text representation for embedding."""
     severity = entry.get("severity", "")
     message = entry.get("message", "") or entry.get("payload", "")

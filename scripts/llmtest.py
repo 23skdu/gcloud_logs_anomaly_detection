@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
+from pathlib import Path
 
-try:
-    from langchain_core.prompts import PromptTemplate
-except ModuleNotFoundError:
-    from langchain.prompts import PromptTemplate
+# Ensure project root is in sys.path when run directly
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from langchain_core.prompts import PromptTemplate
 
 from gcloud_logs_anomaly_detection.observability import setup_logging, timeit
 

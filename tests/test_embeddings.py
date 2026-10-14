@@ -1,12 +1,13 @@
 """Tests for embedding utilities."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from gcloud_logs_anomaly_detection import embeddings
 
 
 class TestEmbeddings:
-    def test_entry_to_text(self):
+    def test_entry_to_text(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text
 
         entry = {
@@ -20,13 +21,13 @@ class TestEmbeddings:
         assert "Disk full" in result
         assert "compute" in result
 
-    def test_entry_to_text_missing_fields(self):
+    def test_entry_to_text_missing_fields(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text
 
         result = _entry_to_text({})
         assert isinstance(result, str)
 
-    def test_entry_to_text_uses_payload(self):
+    def test_entry_to_text_uses_payload(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text
 
         entry = {"severity": "WARN", "payload": "CPU spike"}
@@ -34,7 +35,7 @@ class TestEmbeddings:
         assert "CPU spike" in result
 
     @patch("gcloud_logs_anomaly_detection.embeddings.get_model")
-    def test_embed_text(self, mock_get_model):
+    def test_embed_text(self, mock_get_model: MagicMock) -> None:
         mock_model = MagicMock()
         mock_model.encode.return_value.tolist.return_value = [0.1, 0.2, 0.3]
         mock_get_model.return_value = mock_model
@@ -46,7 +47,7 @@ class TestEmbeddings:
         mock_model.encode.assert_called_once_with("test text")
 
     @patch("gcloud_logs_anomaly_detection.embeddings.get_model")
-    def test_embed_log_entry(self, mock_get_model):
+    def test_embed_log_entry(self, mock_get_model: MagicMock) -> None:
         mock_model = MagicMock()
         mock_model.encode.return_value.tolist.return_value = [0.1, 0.2]
         mock_get_model.return_value = mock_model
@@ -58,7 +59,7 @@ class TestEmbeddings:
         assert result == [0.1, 0.2]
 
     @patch("gcloud_logs_anomaly_detection.embeddings.get_model")
-    def test_embed_log_entries(self, mock_get_model):
+    def test_embed_log_entries(self, mock_get_model: MagicMock) -> None:
         mock_model = MagicMock()
         mock_model.encode.return_value.tolist.return_value = [[0.1], [0.2]]
         mock_get_model.return_value = mock_model
@@ -72,13 +73,13 @@ class TestEmbeddings:
         result = embed_log_entries(entries)
         assert len(result) == 2
 
-    def test_embed_log_entries_empty(self):
+    def test_embed_log_entries_empty(self) -> None:
         from gcloud_logs_anomaly_detection.embeddings import embed_log_entries
 
         result = embed_log_entries([])
         assert result == []
 
-    def test_get_model_caches(self):
+    def test_get_model_caches(self) -> None:
         embeddings._model = None
         mock_instance = MagicMock()
 
@@ -86,7 +87,7 @@ class TestEmbeddings:
 
         call_count = 0
 
-        def fake_get(model_name: str) -> MagicMock:
+        def fake_get(model_name: str = "all-MiniLM-L6-v2") -> Any:
             nonlocal call_count
             call_count += 1
             if call_count == 1:

@@ -66,7 +66,7 @@ class LLMConfig(BaseSettings):
     """Configuration for LLM summarization."""
 
     project_id: str = Field(
-        default="", description="GCP Project ID (required)", alias="GCP_PROJECT"
+        default="", description="GCP Project ID (required)", validation_alias="GCP_PROJECT"
     )
     log_filter: str = Field(default="severity >= INFO", description="Log filter query")
     model_name: str = Field(
@@ -79,7 +79,7 @@ class LLMConfig(BaseSettings):
     interval_hours: int = Field(default=1, description="Hours between scheduled runs")
     backend: str = Field(default="gemini", description="LLM backend (gemini|quarrel|ollama)")
 
-    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore", populate_by_name=True)
 
     @field_validator("project_id", mode="after")
     @classmethod

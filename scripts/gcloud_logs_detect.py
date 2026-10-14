@@ -4,6 +4,14 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+from typing import Any
+
+# Ensure project root is in sys.path when run directly
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -56,9 +64,11 @@ def load_logs(log_name: str, page_size: int = 10000) -> pd.DataFrame:
 
 def preprocess_logs(df: pd.DataFrame) -> pd.DataFrame:
     """Preprocess log DataFrame for anomaly detection."""
+    if df.empty:
+        return df.copy()
     df = df.copy()
     df["timestamp"] = df["timestamp"].astype("int64")
-    df["severity"] = df["severity"].map(SEVERITY_MAPPING).fillna(0)
+    df["severity"] = df["severity"].map(lambda s: SEVERITY_MAPPING.get(str(s), 0))
     df["message_length"] = df["payload"].apply(len)
     return df
 
@@ -92,7 +102,7 @@ def detect_anomalies(
         y_pred = model.predict(Z_test)
         anomaly_indices = [i for i, pred in enumerate(y_pred) if pred == -1]
         df["anomaly"] = df.index.isin(anomaly_indices)
-        anomaly_count = int(df["anomaly"].sum())
+        anomaly_count = len(anomaly_indices)
         log_metric("anomalies_detected", anomaly_count)
         log_metric("total_entries", len(df))
         return df
@@ -121,6 +131,9 @@ def main() -> None:
     setup_logging()
     log_name = get_log_name()
     df = load_logs(log_name)
+    if df.empty:
+        print(f"No log entries found for '{log_name}'.")
+        return
     df = preprocess_logs(df)
     df = detect_anomalies(df)
     visualize_anomalies(df)
@@ -132,7 +145,7 @@ def main() -> None:
 
             anomaly_df = df[df["anomaly"]].copy()
             if len(anomaly_df) > 0:
-                entries = anomaly_df.to_dict("records")
+                entries: list[dict[str, Any]] = [dict(row) for _, row in anomaly_df.iterrows()]
                 count = store_log_entries(entries)
                 print(f"Stored {count} anomaly vectors in Longbow.")
             else:

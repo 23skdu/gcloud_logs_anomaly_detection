@@ -117,47 +117,52 @@ gcloud-anomaly ingest --filter "severity >= ERROR" --hours-ago 72
 ### Direct Script Execution
 
 ```bash
-python gcloud_logs_detect.py       # Anomaly detection
-python gcloud_logs_llmsummary.py   # LLM summarization
-python gcloud_event_create.py      # Generate test events
-python llmtest.py "What is Python?"  # Test local LLM
+python scripts/gcloud_logs_detect.py       # Anomaly detection
+python scripts/gcloud_logs_llmsummary.py   # LLM summarization
+python scripts/gcloud_event_create.py      # Generate test events
+python scripts/llmtest.py "What is Python?"  # Test local LLM
 ```
 
-## Docker
+## Docker & Docker Compose
 
 Build and run with Docker:
 
 ```bash
 docker build -t gcloud-logs-anomaly-detection .
 docker run -it --rm \
-  -v ~/.config/gcloud:/home/appuser/.config/gcloud \
+  -v ~/.config/gcloud:/home/appuser/.config/gcloud:ro \
   -e GCP_PROJECT=your-project \
   gcloud-logs-anomaly-detection
 ```
 
-### Docker Compose with Longbow
+### Docker Compose
+
+Run the full stack (Anomaly Detection, Longbow vector DB, and Quarrel LLM engine):
 
 ```bash
 # Start Longbow vector storage
-docker compose -f docker-compose.longbow.yml up longbow
+docker compose up longbow
 
 # Start Quarrel inference engine
-docker compose -f docker-compose.longbow.yml up quarrel
+docker compose up quarrel
 
-# Start all services
-docker compose -f docker-compose.longbow.yml --profile full up
+# Run anomaly detection
+docker compose run --rm anomaly-detection detect
+
+# Start all services including Ollama
+docker compose --profile full up
 ```
 
 ## Architecture
 
-```
+```text
 gcloud-anomaly (CLI)
-├── detect        → gcloud_logs_detect.py (Isolation Forest)
-├── summarize     → gcloud_logs_llmsummary.py (Gemini/Quarrel/Ollama)
+├── detect        → scripts/gcloud_logs_detect.py (Isolation Forest)
+├── summarize     → scripts/gcloud_logs_llmsummary.py (Gemini/Quarrel/Ollama)
 ├── search        → longbow_store.py → longbow_client.py → Longbow
-├── ingest        → gcloud_logs_llmsummary.py → longbow_store.py
-├── generate      → gcloud_event_create.py
-└── ask           → llmtest.py (Ollama)
+├── ingest        → scripts/gcloud_logs_llmsummary.py → longbow_store.py
+├── generate      → scripts/gcloud_event_create.py
+└── ask           → scripts/llmtest.py (Ollama)
 ```
 
 ## Development
