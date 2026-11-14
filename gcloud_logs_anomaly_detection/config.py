@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import importlib.metadata
+import logging
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("gcloud_anomaly.config")
 
 # --- Plugin Architecture (Improvement #9) ---
 
@@ -26,8 +29,8 @@ def discover_llm_backends() -> dict[str, str]:
         group = eps.select(group="gcloud_anomaly.llm") if hasattr(eps, "select") else []
         for ep in group:
             backends[ep.name] = ep.value
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Failed to discover LLM backend entry points: %s", exc)
     return backends
 
 
@@ -69,9 +72,7 @@ class LLMConfig(BaseSettings):
         default="", description="GCP Project ID (required)", validation_alias="GCP_PROJECT"
     )
     log_filter: str = Field(default="severity >= INFO", description="Log filter query")
-    model_name: str = Field(
-        default="gemini-2.0-flash-lite", description="LLM model to use"
-    )
+    model_name: str = Field(default="gemini-2.0-flash-lite", description="LLM model to use")
     hours_ago: int = Field(default=1, description="Hours of logs to fetch")
     temperature: float = Field(default=0.0, description="LLM temperature")
     chunk_size: int = Field(default=2000, description="Text chunk size for LLM")
@@ -114,15 +115,9 @@ class LLMTestConfig(BaseSettings):
 class LongbowConfig(BaseSettings):
     """Configuration for Longbow vector storage."""
 
-    uri: str = Field(
-        default="grpc://localhost:3000", description="Longbow data port URI"
-    )
-    meta_uri: str = Field(
-        default="grpc://localhost:3001", description="Longbow meta port URI"
-    )
-    dataset: str = Field(
-        default="gcloud_logs", description="Longbow dataset name"
-    )
+    uri: str = Field(default="grpc://localhost:3000", description="Longbow data port URI")
+    meta_uri: str = Field(default="grpc://localhost:3001", description="Longbow meta port URI")
+    dataset: str = Field(default="gcloud_logs", description="Longbow dataset name")
     dims: int = Field(default=384, description="Embedding dimensions")
     data_type: str = Field(
         default="float32", description="Vector data type (float32|turboquant|int8)"
@@ -142,9 +137,7 @@ class LongbowConfig(BaseSettings):
 class QuarrelConfig(BaseSettings):
     """Configuration for Longbow-Quarrel inference."""
 
-    base_url: str = Field(
-        default="http://localhost:8080", description="Quarrel API base URL"
-    )
+    base_url: str = Field(default="http://localhost:8080", description="Quarrel API base URL")
     api_key: str = Field(default="", description="Quarrel API key")
     model: str = Field(default="default", description="Quarrel model name")
     temperature: float = Field(default=0.0, description="LLM temperature")

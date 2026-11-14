@@ -36,7 +36,10 @@ class CircuitBreaker:
 
     @property
     def state(self) -> str:
-        if self._state == "open" and time.monotonic() - self._last_failure_time >= self.cooldown_seconds:
+        if (
+            self._state == "open"
+            and time.monotonic() - self._last_failure_time >= self.cooldown_seconds
+        ):
             self._state = "half_open"
         return self._state
 
@@ -278,9 +281,7 @@ def search_turboquant(
     if config is None:
         config = LongbowConfig()
     client = get_client(config)
-    result = client.search(
-        dataset=config.dataset, vector=vector, k=k, vector_type="turboquant"
-    )
+    result = client.search(dataset=config.dataset, vector=vector, k=k, vector_type="turboquant")
     _record_operation(True)
     return result
 

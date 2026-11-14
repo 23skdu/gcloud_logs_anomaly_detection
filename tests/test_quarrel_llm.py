@@ -35,9 +35,7 @@ class TestQuarrelLLM:
         llm = QuarrelLLM(base_url="http://test:8080", api_key="key123")
         result = llm._call("test prompt")
         assert result == "Hello!"
-        mock_openai_cls.assert_called_once_with(
-            base_url="http://test:8080/v1", api_key="key123"
-        )
+        mock_openai_cls.assert_called_once_with(base_url="http://test:8080/v1", api_key="key123")
 
     @patch("gcloud_logs_anomaly_detection.quarrel_llm.OpenAI")
     def test_call_empty_content(self, mock_openai_cls):

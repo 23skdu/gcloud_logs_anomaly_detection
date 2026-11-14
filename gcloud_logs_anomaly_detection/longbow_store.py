@@ -224,9 +224,7 @@ def _build_metadata(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         ts = entry.get("timestamp")
         ts_nanos = 0
         if ts is not None:
-            ts_nanos = (
-                int(ts.timestamp() * 1000000000.0) if isinstance(ts, datetime) else int(ts)
-            )
+            ts_nanos = int(ts.timestamp() * 1000000000.0) if isinstance(ts, datetime) else int(ts)
         metadata.append(
             {
                 "timestamp": ts_nanos,
@@ -283,9 +281,7 @@ def store_log_entries_incremental(
             ts_nanos = 0
             if ts is not None:
                 ts_nanos = (
-                    int(ts.timestamp() * 1000000000.0)
-                    if isinstance(ts, datetime)
-                    else int(ts)
+                    int(ts.timestamp() * 1000000000.0) if isinstance(ts, datetime) else int(ts)
                 )
             if ts_nanos > watermark:
                 filtered.append(e)
@@ -307,11 +303,7 @@ def store_log_entries_incremental(
     for e in entries:
         ts = e.get("timestamp")
         if ts is not None:
-            ts_nanos = (
-                int(ts.timestamp() * 1000000000.0)
-                if isinstance(ts, datetime)
-                else int(ts)
-            )
+            ts_nanos = int(ts.timestamp() * 1000000000.0) if isinstance(ts, datetime) else int(ts)
             max_ts = max(max_ts, ts_nanos)
     if max_ts > 0:
         set_watermark(max_ts, config)
@@ -392,9 +384,7 @@ def search_hybrid_logs(
 
     start = time.monotonic()
     vector = embed_text(query, model_name=config.embedding_model)
-    result = search_hybrid(
-        vector, text_query=text_query, alpha=alpha, k=k, config=config
-    )
+    result = search_hybrid(vector, text_query=text_query, alpha=alpha, k=k, config=config)
     if hasattr(result, "compute"):
         result = result.compute()
     elapsed_ms = (time.monotonic() - start) * 1000
@@ -413,9 +403,7 @@ def search_temporal_logs(
         config = LongbowConfig()
 
     start = time.monotonic()
-    result = search_temporal(
-        search_type=search_type, duration=duration, k=k, config=config
-    )
+    result = search_temporal(search_type=search_type, duration=duration, k=k, config=config)
     if hasattr(result, "compute"):
         result = result.compute()
     elapsed_ms = (time.monotonic() - start) * 1000

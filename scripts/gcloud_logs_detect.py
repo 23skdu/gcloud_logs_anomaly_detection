@@ -87,9 +87,7 @@ def detect_anomalies(
     """
     try:
         features = df[["timestamp", "severity", "message_length"]]
-        X_train, X_test = train_test_split(
-            features, test_size=test_size, random_state=random_state
-        )
+        X_train, X_test = train_test_split(features, test_size=test_size, random_state=random_state)
         scaler = StandardScaler()
         Z_train = scaler.fit_transform(X_train)
         Z_test = scaler.transform(X_test)

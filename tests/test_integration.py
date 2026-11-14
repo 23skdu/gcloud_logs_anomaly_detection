@@ -43,13 +43,15 @@ class TestDetectStoreSearchFlow:
         from gcloud_logs_anomaly_detection.longbow_store import search_similar_logs
 
         mock_embed.return_value = [0.1, 0.2, 0.3]
-        mock_search.return_value = pd.DataFrame({
-            "id": [1],
-            "score": [0.95],
-            "severity": ["ERROR"],
-            "message": ["Anomalous disk usage spike"],
-            "resource": ["compute"],
-        })
+        mock_search.return_value = pd.DataFrame(
+            {
+                "id": [1],
+                "score": [0.95],
+                "severity": ["ERROR"],
+                "message": ["Anomalous disk usage spike"],
+                "resource": ["compute"],
+            }
+        )
 
         result = search_similar_logs("disk usage", k=5, use_cache=False)
         assert result.total == 1
@@ -69,14 +71,22 @@ class TestIngestSearchFlow:
         )
 
         mock_embed.return_value = [0.1, 0.2]
-        mock_search.return_value = pd.DataFrame({
-            "id": [2], "score": [0.88],
-            "severity": ["ERROR"], "message": ["Connection timeout"],
-        })
+        mock_search.return_value = pd.DataFrame(
+            {
+                "id": [2],
+                "score": [0.88],
+                "severity": ["ERROR"],
+                "message": ["Connection timeout"],
+            }
+        )
 
-        with patch("gcloud_logs_anomaly_detection.longbow_store.embed_log_entries") as mock_batch_embed, \
-             patch("gcloud_logs_anomaly_detection.longbow_store.store_vectors") as mock_store, \
-             patch("gcloud_logs_anomaly_detection.longbow_store.ensure_dataset"):
+        with (
+            patch(
+                "gcloud_logs_anomaly_detection.longbow_store.embed_log_entries"
+            ) as mock_batch_embed,
+            patch("gcloud_logs_anomaly_detection.longbow_store.store_vectors") as mock_store,
+            patch("gcloud_logs_anomaly_detection.longbow_store.ensure_dataset"),
+        ):
             mock_batch_embed.return_value = [[0.1, 0.2], [0.3, 0.4]]
             mock_store.return_value = 2
 

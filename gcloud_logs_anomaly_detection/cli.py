@@ -93,14 +93,17 @@ def main() -> int:
     @click.option("-k", "--top-k", default=10, type=int)
     @click.option("--alpha", default=0.7, type=float, help="Hybrid blending weight")
     @click.option(
-        "--filter", "filters", multiple=True,
+        "--filter",
+        "filters",
+        multiple=True,
         help="Metadata filter: KEY=OP:VALUE (e.g. severity=eq:ERROR)",
     )
     @click.option("--duration", default="1h", help="Time window for temporal search")
     @click.option("--id", "vector_id", default=None, type=int, help="Vector ID for by-id search")
     @click.option("--dataset", envvar="LONGBOW_DATASET", default=None)
     @click.option(
-        "--format", "output_format",
+        "--format",
+        "output_format",
         default="table",
         type=click.Choice(["table", "json", "csv"]),
         help="Output format",
@@ -142,7 +145,9 @@ def main() -> int:
         result: Any = None
 
         if mode == "temporal":
-            result = search_temporal_logs(search_type="sliding_window_time", duration=duration, k=top_k, config=config)
+            result = search_temporal_logs(
+                search_type="sliding_window_time", duration=duration, k=top_k, config=config
+            )
         elif mode == "by-id":
             if vector_id is None:
                 click.echo("Error: --id is required for by-id mode", err=True)
@@ -243,7 +248,9 @@ def main() -> int:
             count = store_log_entries(entries, config=config)
         elapsed = time.monotonic() - start
 
-        click.echo(f"Stored {count} vectors in Longbow dataset '{config.dataset}' ({elapsed:.2f}s).")
+        click.echo(
+            f"Stored {count} vectors in Longbow dataset '{config.dataset}' ({elapsed:.2f}s)."
+        )
 
     @cli.command()
     @click.option("--longbow", is_flag=True, help="Check Longbow connectivity")
@@ -315,15 +322,23 @@ def _check_quarrel() -> dict[str, Any]:
     """Check Quarrel HTTP health endpoint."""
     start = time.monotonic()
     try:
-        import urllib.error
+        import urllib.parse
         import urllib.request
 
         from gcloud_logs_anomaly_detection.config import QuarrelConfig
 
         config = QuarrelConfig()
         url = f"{config.base_url}/health"
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            elapsed = (time.monotonic() - start) * 1000
+            return {
+                "ok": False,
+                "latency_ms": elapsed,
+                "detail": f"Unsupported URL scheme: {parsed.scheme or '(none)'}",
+            }
+        req = urllib.request.Request(url, method="GET")  # noqa: S310  # nosec B310
+        with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310  # nosec B310
             elapsed = (time.monotonic() - start) * 1000
             return {"ok": resp.status == 200, "latency_ms": elapsed, "detail": config.base_url}
     except Exception as exc:
@@ -339,6 +354,7 @@ def _check_gemini() -> dict[str, Any]:
         if not project_id:
             return {"ok": False, "latency_ms": 0, "detail": "GCP_PROJECT not set"}
         from google.cloud import logging as gcp_logging
+
         client = gcp_logging.Client(project=project_id)
         client.list_entries(max_results=1)
         elapsed = (time.monotonic() - start) * 1000
