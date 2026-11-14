@@ -141,7 +141,7 @@ jobs:
           persist-credentials: false
 
       - name: Lint Markdown
-        uses: DavidAnson/markdownlint-cli2-action@b1b52380ebc88bd0ffd4a927f33c8ef9862e1281 # v25
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25
         with:
           globs: |
             README.md
