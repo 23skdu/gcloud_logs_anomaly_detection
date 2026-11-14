@@ -74,7 +74,9 @@ class TestLLMSummary:
             }
         ]
 
-        with patch("scripts.gcloud_logs_llmsummary.RecursiveCharacterTextSplitter") as mock_splitter:
+        with patch(
+            "scripts.gcloud_logs_llmsummary.RecursiveCharacterTextSplitter"
+        ) as mock_splitter:
             mock_splitter.return_value.split_text.return_value = ["chunk1"]
             mock_llm = Mock()
             with patch("scripts.gcloud_logs_llmsummary.PromptTemplate") as mock_prompt_cls:

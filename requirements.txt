@@ -1,3 +1,10 @@
+# Pinned runtime dependencies installed by the Docker image.
+# Keep this file in sync with the runtime dependencies in pyproject.toml.
+#
+# The Longbow vector SDK is not published on PyPI. Install it separately when
+# vector storage is required (see README.md) so an unrelated PyPI package named
+# "longbow" is never pulled into the runtime environment.
+
 pandas==3.1.1
 scikit-learn==1.9.1
 google-cloud-logging==3.17.0
@@ -12,10 +19,5 @@ google-api-core==2.44.0
 pydantic==2.14.3
 pydantic-settings==2.16.2
 click==8.5.1
-longbow>=0.1.9
-openai>=1.0.0
-sentence-transformers>=3.0.0
-pytest==9.2.0
-pytest-asyncio==1.4.1.post1
-ruff==0.17.4
-mypy==2.4.1
+openai==3.51.0
+sentence-transformers==6.3.0

@@ -87,11 +87,9 @@ def get_log_entries(
             last_exc = exc
             logger.warning("Attempt %d/%d failed: %s", attempt, max_retries, exc)
             if attempt < max_retries:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
     else:
-        raise GCPAPIError(
-            f"Failed to fetch logs after {max_retries} attempts", cause=last_exc
-        )
+        raise GCPAPIError(f"Failed to fetch logs after {max_retries} attempts", cause=last_exc)
 
     log_entries: list[dict[str, Any]] = []
     for entry in entries:
@@ -150,12 +148,7 @@ def summarize_logs(logs: list[dict[str, Any]], llm: Any) -> str:
     summary = ""
 
     for chunk in texts:
-        chain = (
-            {"logs": RunnablePassthrough()}
-            | prompt
-            | llm
-            | StrOutputParser()
-        )
+        chain = {"logs": RunnablePassthrough()} | prompt | llm | StrOutputParser()
         summary += chain.invoke({"logs": chunk}, config={"tags": ["summarization"]})
 
     return summary
@@ -208,9 +201,7 @@ def create_llm(
         return factory
 
     available = list(get_builtin_backends().keys()) + list(plugins.keys())
-    raise ValueError(
-        f"Unknown backend '{backend}'. Available: {', '.join(sorted(set(available)))}"
-    )
+    raise ValueError(f"Unknown backend '{backend}'. Available: {', '.join(sorted(set(available)))}")
 
 
 BACKEND = os.environ.get("LLM_BACKEND", "gemini")

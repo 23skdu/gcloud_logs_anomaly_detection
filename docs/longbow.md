@@ -180,7 +180,7 @@ for entry in result.entries:
 
 # Export formats
 print(result.to_json())  # JSON string
-print(result.to_csv())   # CSV string
+print(result.to_csv())  # CSV string
 ```
 
 ## Python API
@@ -233,10 +233,10 @@ from gcloud_logs_anomaly_detection.longbow_client import (
 
 # Connection management
 client = get_client()  # Creates/caches connection
-disconnect()           # Clears cached client
+disconnect()  # Clears cached client
 
 # Dataset management
-ensure_dataset()       # Creates namespace if needed
+ensure_dataset()  # Creates namespace if needed
 
 # Statistics
 stats = get_cluster_stats()

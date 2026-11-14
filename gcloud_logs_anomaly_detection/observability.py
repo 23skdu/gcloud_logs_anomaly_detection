@@ -70,8 +70,13 @@ def get_metrics_prometheus() -> str:
     return "\n".join(lines) + "\n"
 
 
-def start_metrics_server(port: int = 9090) -> None:
-    """Start a simple HTTP server exposing /metrics endpoint."""
+def start_metrics_server(port: int = 9090, host: str | None = None) -> None:
+    """Start a simple HTTP server exposing /metrics endpoint.
+
+    The bind address defaults to ``METRICS_HOST`` or ``0.0.0.0`` so the
+    endpoint is reachable from a container. Set ``METRICS_HOST=127.0.0.1``
+    to restrict it to the local host.
+    """
     if not _metrics_enabled:
         logger.info("Metrics not enabled (set METRICS_ENABLED=1)")
         return
@@ -94,6 +99,7 @@ def start_metrics_server(port: int = 9090) -> None:
         def log_message(self, format: str, *args: Any) -> None:
             logger.debug("Metrics server: %s", format % args)
 
-    server = HTTPServer(("0.0.0.0", port), MetricsHandler)
-    logger.info("Metrics server started on port %d", port)
+    bind_host = host or os.environ.get("METRICS_HOST", "")
+    server = HTTPServer((bind_host, port), MetricsHandler)
+    logger.info("Metrics server started on %s:%d", bind_host or "all interfaces", port)
     server.serve_forever()

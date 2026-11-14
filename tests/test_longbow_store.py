@@ -163,12 +163,22 @@ class TestSearchResult:
         from gcloud_logs_anomaly_detection.longbow_store import LogEntry, SearchResult
 
         result = SearchResult(
-            entries=[LogEntry(id=1, score=0.9, timestamp="2024-01-01", severity="ERROR", message="test", resource="res")],
+            entries=[
+                LogEntry(
+                    id=1,
+                    score=0.9,
+                    timestamp="2024-01-01",
+                    severity="ERROR",
+                    message="test",
+                    resource="res",
+                )
+            ],
             total=1,
             query_time_ms=12.5,
             mode="dense",
         )
         import json
+
         data = json.loads(result.to_json())
         assert data["total"] == 1
         assert data["mode"] == "dense"
@@ -178,7 +188,16 @@ class TestSearchResult:
         from gcloud_logs_anomaly_detection.longbow_store import LogEntry, SearchResult
 
         result = SearchResult(
-            entries=[LogEntry(id=1, score=0.9, timestamp="2024-01-01", severity="ERROR", message="test", resource="res")],
+            entries=[
+                LogEntry(
+                    id=1,
+                    score=0.9,
+                    timestamp="2024-01-01",
+                    severity="ERROR",
+                    message="test",
+                    resource="res",
+                )
+            ],
             total=1,
             query_time_ms=12.5,
             mode="dense",
@@ -254,8 +273,16 @@ class TestWatermark:
 
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries_incremental
 
-        old_entry = {"timestamp": datetime.fromtimestamp(0.5), "severity": "ERROR", "message": "old"}
-        new_entry = {"timestamp": datetime.fromtimestamp(2.0), "severity": "ERROR", "message": "new"}
+        old_entry = {
+            "timestamp": datetime.fromtimestamp(0.5),
+            "severity": "ERROR",
+            "message": "old",
+        }
+        new_entry = {
+            "timestamp": datetime.fromtimestamp(2.0),
+            "severity": "ERROR",
+            "message": "new",
+        }
         count = store_log_entries_incremental([old_entry, new_entry])
         assert count == 1
         mock_store.assert_called_once()
@@ -268,7 +295,11 @@ class TestWatermark:
 
         from gcloud_logs_anomaly_detection.longbow_store import store_log_entries_incremental
 
-        old_entry = {"timestamp": datetime.fromtimestamp(1.0), "severity": "ERROR", "message": "old"}
+        old_entry = {
+            "timestamp": datetime.fromtimestamp(1.0),
+            "severity": "ERROR",
+            "message": "old",
+        }
         count = store_log_entries_incremental([old_entry])
         assert count == 0
 
@@ -316,14 +347,24 @@ class TestSchemaNormalization:
     def test_entry_to_text_with_dict_labels(self):
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text
 
-        entry = {"severity": "ERROR", "message": "test", "resource": "res", "labels": {"env": "prod"}}
+        entry = {
+            "severity": "ERROR",
+            "message": "test",
+            "resource": "res",
+            "labels": {"env": "prod"},
+        }
         result = _entry_to_text(entry)
         assert "env=prod" in result
 
     def test_entry_to_text_with_string_labels(self):
         from gcloud_logs_anomaly_detection.embeddings import _entry_to_text
 
-        entry = {"severity": "ERROR", "message": "test", "resource": "res", "labels": '{"env": "prod"}'}
+        entry = {
+            "severity": "ERROR",
+            "message": "test",
+            "resource": "res",
+            "labels": '{"env": "prod"}',
+        }
         result = _entry_to_text(entry)
         assert "env" in result
 

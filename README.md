@@ -1,5 +1,8 @@
 # gcloud-logs-anomaly-detection
 
+[![CI](https://github.com/23skdu/gcloud_logs_anomaly_detection/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/23skdu/gcloud_logs_anomaly_detection/actions/workflows/ci.yml)
+[![Docker Build and Publish](https://github.com/23skdu/gcloud_logs_anomaly_detection/actions/workflows/docker-publish.yml/badge.svg?branch=main)](https://github.com/23skdu/gcloud_logs_anomaly_detection/actions/workflows/docker-publish.yml)
+
 Machine Learning tool to find anomalies in Google Cloud Logging events
 
 ## Features
@@ -23,7 +26,15 @@ pip install -r requirements.txt
 For development:
 
 ```bash
-pip install -e ".[dev]"
+pip install -r requirements-dev.txt
+# or: pip install -e ".[dev]"
+```
+
+Vector storage requires the Longbow Python SDK, which is not published on
+PyPI. Install it from the upstream repository when needed:
+
+```bash
+pip install "git+https://github.com/23skdu/longbow.git#subdirectory=longbowclientsdk"
 ```
 
 ## Configuration
@@ -58,6 +69,7 @@ cp .env.example .env
 | `LONGBOW_EMBEDDING_MODEL` | Sentence-transformers model | `all-MiniLM-L6-v2` |
 | `QUARREL_BASE_URL` | Quarrel API base URL | `http://localhost:8080` |
 | `QUARREL_API_KEY` | Quarrel API key | (empty) |
+| `METRICS_HOST` | Bind address for the metrics server | `0.0.0.0` |
 | `QUARREL_MODEL` | Quarrel model name | `default` |
 | `QUARREL_TEMPERATURE` | LLM temperature | `0.0` |
 | `QUARREL_MAX_TOKENS` | Max generation tokens | `4096` |
@@ -177,7 +189,10 @@ pytest
 
 ```bash
 ruff check .
+ruff format --check .
 mypy .
+bandit -q -ll -r gcloud_logs_anomaly_detection scripts config.py
+pip-audit -r requirements.txt --strict
 ```
 
 ### Pre-commit
@@ -186,6 +201,23 @@ mypy .
 pre-commit install
 pre-commit run --all-files
 ```
+
+### Cleaning up
+
+```bash
+make clean       # remove test/build artifacts, caches, .venv and local project images
+make clean-all   # also prune the global Docker builder cache
+```
+
+## Security
+
+Security controls and the vulnerability reporting process are documented in
+[SECURITY.md](SECURITY.md).
+
+The CI pipeline runs Ruff, mypy, pytest, Bandit, pip-audit, Hadolint,
+markdownlint, actionlint and zizmor. CodeQL code scanning and dependency review
+run on every pull request, and Dependabot keeps Python, Docker, Docker Compose,
+GitHub Actions and pre-commit dependencies up to date.
 
 ## License
 
