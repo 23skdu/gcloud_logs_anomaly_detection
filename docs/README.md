@@ -191,7 +191,7 @@ pytest
 ruff check .
 ruff format --check .
 mypy .
-bandit -q -ll -r gcloud_logs_anomaly_detection scripts config.py
+bandit -q -ll -r gcloud_logs_anomaly_detection scripts
 pip-audit -r requirements.txt --strict
 ```
 

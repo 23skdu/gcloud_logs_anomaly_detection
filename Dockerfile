@@ -47,8 +47,8 @@ COPY --from=builder /install /usr/local
 WORKDIR /app
 
 # Copy application source with least privilege ownership
-COPY --chown=appuser:appuser pyproject.toml README.md ./
-COPY --chown=appuser:appuser config.py ./
+COPY --chown=appuser:appuser pyproject.toml ./
+COPY --chown=appuser:appuser docs/ ./docs/
 COPY --chown=appuser:appuser scripts/ ./scripts/
 COPY --chown=appuser:appuser gcloud_logs_anomaly_detection/ ./gcloud_logs_anomaly_detection/
 
