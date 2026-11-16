@@ -2,7 +2,7 @@
 # Multi-stage build for gcloud-logs-anomaly-detection
 
 # --- Stage 1: Build & Dependency Installation ---
-FROM python:3.14-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /build
 
@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 # --- Stage 2: Minimal & Hardened Runtime ---
-FROM python:3.14-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 LABEL org.opencontainers.image.title="gcloud-logs-anomaly-detection" \
       org.opencontainers.image.description="Machine Learning tool to find anomalies in Google Cloud Logging events" \
