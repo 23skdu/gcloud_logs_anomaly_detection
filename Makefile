@@ -21,9 +21,10 @@ help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install the project and development dependencies
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install -e ".[dev]"
+install: ## Install the project and development dependencies into .venv
+	@if [ ! -x "$(VENV)/bin/python" ]; then python3 -m venv $(VENV); fi
+	$(VENV)/bin/python -m pip install --upgrade pip
+	$(VENV)/bin/python -m pip install -e ".[dev]"
 
 lint: ## Run Ruff and mypy
 	$(PYTHON) -m ruff check .
@@ -39,7 +40,7 @@ test: ## Run the test suite
 
 security: ## Run dependency and static security checks
 	$(PYTHON) -m pip_audit -r requirements.txt --strict
-	$(PYTHON) -m bandit -q -ll -r gcloud_logs_anomaly_detection scripts config.py
+	$(PYTHON) -m bandit -q -ll -r gcloud_logs_anomaly_detection scripts
 
 pre-commit: ## Run all pre-commit hooks
 	$(PYTHON) -m pre_commit run --all-files
@@ -62,7 +63,7 @@ clean-caches: ## Remove local tool caches
 	rm -rf .mypy_cache .ruff_cache .cache
 
 clean-venv: ## Remove local virtual environments
-	rm -rf $(VENV) venv
+	rm -rf $(VENV)
 
 clean-docker: ## Remove locally tagged project Docker images
 	@command -v docker >/dev/null 2>&1 || { echo "docker not found; skipping"; exit 0; }

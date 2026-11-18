@@ -30,6 +30,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PATH="/usr/local/bin:$PATH"
 
+# Pick up Debian security updates that are newer than the base image snapshot.
+# hadolint ignore=DL3005
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # DevSecOps: create non-root user with explicit UID/GID
 RUN groupadd --gid 1000 appuser && \
     useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash appuser
@@ -40,13 +47,17 @@ COPY --from=builder /install /usr/local
 WORKDIR /app
 
 # Copy application source with least privilege ownership
-COPY --chown=appuser:appuser pyproject.toml README.md ./
-COPY --chown=appuser:appuser config.py ./
+COPY --chown=appuser:appuser pyproject.toml ./
+COPY --chown=appuser:appuser docs/ ./docs/
 COPY --chown=appuser:appuser scripts/ ./scripts/
 COPY --chown=appuser:appuser gcloud_logs_anomaly_detection/ ./gcloud_logs_anomaly_detection/
 
 # Install the application entrypoint without reinstalling dependencies
-RUN pip install --no-cache-dir --no-deps -e .
+RUN pip install --no-cache-dir --no-deps -e . && \
+    # Drop pip from the runtime image: the app never needs a package manager,
+    # and pip's vendored packages (msgpack, setuptools, urllib3) otherwise
+    # surface as vulnerable transitive dependencies in image scans.
+    python -m pip uninstall -y pip
 
 # Switch to non-root user (using numeric UID:GID for security compliance)
 USER 1000:1000

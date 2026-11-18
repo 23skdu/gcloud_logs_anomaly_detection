@@ -12,11 +12,9 @@ __pycache__
 .mypy_cache
 .pytest_cache
 tests
-docs
+docs/*
 *.md
-!README.md
-!requirements.txt
-!pyproject.toml
+!docs/README.md
 .pre-commit-config.yaml
 htmlcov
 .coverage

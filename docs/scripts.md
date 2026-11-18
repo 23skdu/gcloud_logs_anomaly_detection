@@ -1,15 +1,15 @@
 # Standalone Scripts Reference
 
-All standalone execution scripts are located in the [`scripts/`](file:///home/rsd/REPOS/gcloud_logs_anomaly_detection/scripts) directory. Each script can be executed directly with Python or via the unified `gcloud-anomaly` CLI.
+All standalone execution scripts are located in the [`scripts/`](../scripts) directory. Each script can be executed directly with Python or via the unified `gcloud-anomaly` CLI.
 
 ## Quick Reference
 
 | Script | Purpose | CLI Equivalent | Key Configuration |
 |--------|---------|----------------|-------------------|
-| [`gcloud_logs_detect.py`](file:///home/rsd/REPOS/gcloud_logs_anomaly_detection/scripts/gcloud_logs_detect.py) | Isolation Forest anomaly detection in GCP logs | `gcloud-anomaly detect` | `LOG_NAME`, `LOG_PAGE_SIZE`, `LOG_CONTAMINATION` |
-| [`gcloud_logs_llmsummary.py`](file:///home/rsd/REPOS/gcloud_logs_anomaly_detection/scripts/gcloud_logs_llmsummary.py) | LLM-powered log summarization | `gcloud-anomaly summarize` | `GCP_PROJECT`, `MODEL_NAME`, `LLM_BACKEND` |
-| [`gcloud_event_create.py`](file:///home/rsd/REPOS/gcloud_logs_anomaly_detection/scripts/gcloud_event_create.py) | Synthetic test event generator for GCP Logging | `gcloud-anomaly generate` | `NUMEVENTS`, `LOG_NAME` |
-| [`llmtest.py`](file:///home/rsd/REPOS/gcloud_logs_anomaly_detection/scripts/llmtest.py) | Local Ollama LLM integration tester | `gcloud-anomaly ask` | `MODELNAME` |
+| [`gcloud_logs_detect.py`](../scripts/gcloud_logs_detect.py) | Isolation Forest anomaly detection in GCP logs | `gcloud-anomaly detect` | `LOG_NAME`, `LOG_PAGE_SIZE`, `LOG_CONTAMINATION` |
+| [`gcloud_logs_llmsummary.py`](../scripts/gcloud_logs_llmsummary.py) | LLM-powered log summarization | `gcloud-anomaly summarize` | `GCP_PROJECT`, `MODEL_NAME`, `LLM_BACKEND` |
+| [`gcloud_event_create.py`](../scripts/gcloud_event_create.py) | Synthetic test event generator for GCP Logging | `gcloud-anomaly generate` | `NUMEVENTS`, `LOG_NAME` |
+| [`llmtest.py`](../scripts/llmtest.py) | Local Ollama LLM integration tester | `gcloud-anomaly ask` | `MODELNAME` |
 
 ---
 
@@ -136,3 +136,116 @@ gcloud-anomaly ask "Explain anomaly detection in log files" --model smollm2:135m
 |----------|------------|-------------|---------|
 | `MODELNAME` | `--model` | Ollama model identifier | `smollm2:135m` |
 | `OLLAMA_HOST` | - | Host endpoint for Ollama API | `http://localhost:11434` |
+
+---
+
+## How the Scripts Work Together
+
+The scripts form a small pipeline around Google Cloud Logging, an optional vector
+store (Longbow), and local/remote LLM backends. They share configuration through
+environment variables (see `.env.example`) and the unified `gcloud-anomaly` CLI
+in `gcloud_logs_anomaly_detection/cli.py`.
+
+```text
+gcloud_event_create.py  ──►  GCP Logging  ──►  gcloud_logs_detect.py
+        (generate test data)                          (Isolation Forest)
+                                                          │
+                                                          ▼
+                                              Longbow vector store (optional)
+                                                          │
+                          ┌───────────────────────────────┼───────────────────────────────┐
+                          ▼                               ▼                               ▼
+                gcloud_logs_llmsummary.py            longbow_store.py                 llmtest.py
+                (Gemini / Quarrel / Ollama)           (ingest + search)               (Ollama smoke test)
+```
+
+### Typical end-to-end flow
+
+1. **Generate data** (optional, for testing):
+
+   ```bash
+   gcloud-anomaly generate --num-events 1000
+   ```
+
+   runs `scripts/gcloud_event_create.py`, which writes synthetic entries to GCP
+   Logging under `LOG_NAME`.
+
+2. **Detect anomalies**:
+
+   ```bash
+   gcloud-anomaly detect
+   # or store results as vectors
+   gcloud-anomaly detect --store-vector
+   ```
+
+   runs `scripts/gcloud_logs_detect.py`. With `STORE_VECTOR=1` /
+   `--store-vector` it calls `longbow_store.store_log_entries` to persist
+   anomalous entries.
+
+3. **Ingest logs for semantic search** (independent of detection):
+
+   ```bash
+   gcloud-anomaly ingest --hours-ago 24
+   ```
+
+   uses `scripts/gcloud_logs_llmsummary.get_log_entries` to fetch entries and
+   `longbow_store` to embed and store them. Supports `--incremental`
+   (watermark) and `--async` (batched) modes.
+
+4. **Search**:
+
+   ```bash
+   gcloud-anomaly search "authentication failures"
+   ```
+
+   queries Longbow via `longbow_store` / `longbow_client`.
+
+5. **Summarize**:
+
+   ```bash
+   gcloud-anomaly summarize --backend gemini
+   ```
+
+   runs `scripts/gcloud_logs_llmsummary.py`, fetching logs and producing a
+   bullet-point summary through the selected LLM backend. Backends are
+   discovered via `gcloud_logs_anomaly_detection.config` (`discover_llm_backends`).
+
+6. **Smoke-test a local LLM**:
+
+   ```bash
+   gcloud-anomaly ask "What is Python?"
+   ```
+
+   runs `scripts/llmtest.py` against Ollama.
+
+### Shared infrastructure
+
+- `gcloud_logs_anomaly_detection/config.py` holds the pydantic-settings classes
+  (`DetectConfig`, `LLMConfig`, `EventCreateConfig`, `LLMTestConfig`,
+  `LongbowConfig`, `QuarrelConfig`) used across scripts and the CLI.
+- `scripts/config.py` re-exports them for direct script usage.
+- `gcloud_logs_anomaly_detection/observability.py` provides `setup_logging`,
+  `timeit`, and `log_metric` used by every script.
+- `gcloud_logs_anomaly_detection/exceptions.py` provides the typed exception
+  hierarchy (`GCPAPIError`, `LLMSummarizationError`, ...).
+
+### Running scripts directly
+
+Each script bootstraps `sys.path` so it can be run from the repository root:
+
+```bash
+python scripts/gcloud_logs_detect.py
+python scripts/gcloud_logs_llmsummary.py
+python scripts/gcloud_event_create.py
+python scripts/llmtest.py "What is Python?"
+```
+
+When run directly, scripts read their settings from environment variables (or
+`.env`). The unified CLI sets these variables for you.
+
+### Virtual environment
+
+A single virtual environment (`.venv`) is used for development and CI. Create it
+with `python3 -m venv .venv` (or `uv venv .venv`) and install with
+`pip install -e ".[dev]"`. The Makefile's `PYTHON` variable prefers
+`.venv/bin/python` when present.
