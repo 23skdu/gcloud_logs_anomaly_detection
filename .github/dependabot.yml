@@ -1,116 +1,16 @@
 version: 2
-
 updates:
-  # Python dependencies (requirements*.txt and pyproject.toml)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    groups:
-      python-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "build(deps)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "python"
 
-  # Dockerfile base image
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    groups:
-      docker-images:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "build(deps)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
 
-  # Images referenced by docker-compose.yml and docker-compose.longbow.yml
-  - package-ecosystem: "docker-compose"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    groups:
-      docker-compose-images:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "build(deps)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
-
-  # Actions pinned in .github/workflows/*
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "build(deps)"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "github_actions"
-
-  # Pre-commit hook revisions (ruff, mypy, hygiene hooks)
-  - package-ecosystem: "pre-commit"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 5
-    groups:
-      pre-commit-hooks:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    commit-message:
-      prefix: "build(deps)"
-      include: "scope"
-    labels:
-      - "dependencies"
